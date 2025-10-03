@@ -1,0 +1,39 @@
+// Tabs 组件样式 - 从示例 tabs.tsx 移植
+.ui-tabs {
+  width: 100%;
+}
+
+.ui-tabs-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  height: 72rpx;
+  background: #f3f3f5;
+  border-radius: 12rpx;
+  padding: 4rpx;
+  gap: 0;
+}
+
+.ui-tabs-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8rpx;
+  transition: all 0.2s;
+  cursor: pointer;
+
+  .ui-tabs-trigger-text {
+    font-size: 28rpx;
+    color: oklch(0.145 0 0);
+    font-weight: 400;
+  }
+
+  &.ui-tabs-trigger-active {
+    background: #ffffff;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+    .ui-tabs-trigger-text {
+      font-weight: 500;
+    }
+  }
+}
+

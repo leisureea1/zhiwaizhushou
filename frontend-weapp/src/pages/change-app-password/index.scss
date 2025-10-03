@@ -1,0 +1,229 @@
+.change-password-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+
+  /* 状态栏占位 */
+  .status-bar-placeholder {
+    height: 88rpx;
+    background: white;
+  }
+
+  /* 顶部栏 */
+  .header {
+    background: white;
+    padding: 24rpx 32rpx;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+
+    .header-back {
+      width: 64rpx;
+      height: 64rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 10;
+      position: relative;
+
+      &:active {
+        transform: scale(0.9);
+        opacity: 0.6;
+      }
+
+      .back-icon {
+        font-size: 48rpx;
+        font-weight: 600;
+        color: #1f2937;
+        line-height: 1;
+      }
+    }
+
+    .header-content {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .header-title {
+        font-size: 36rpx;
+        font-weight: bold;
+        color: #1f2937;
+      }
+    }
+
+    .header-placeholder {
+      width: 64rpx;
+      height: 64rpx;
+    }
+  }
+
+  /* 表单容器 */
+  .form-container {
+    padding: 48rpx 32rpx;
+
+    .form-card {
+      background: white;
+      border-radius: 24rpx;
+      padding: 48rpx 32rpx;
+      box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+
+      .info-section {
+        text-align: center;
+        margin-bottom: 48rpx;
+
+        .info-icon {
+          font-size: 96rpx;
+          display: block;
+          margin-bottom: 24rpx;
+        }
+
+        .info-title {
+          font-size: 36rpx;
+          font-weight: bold;
+          color: #1f2937;
+          display: block;
+          margin-bottom: 16rpx;
+        }
+
+        .info-desc {
+          font-size: 28rpx;
+          color: #6b7280;
+          line-height: 1.6;
+          display: block;
+          white-space: pre-line;
+        }
+      }
+
+      .form-item {
+        margin-bottom: 32rpx;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .input-label {
+          margin-bottom: 16rpx;
+
+          .label-text {
+            color: #1f2937;
+            font-size: 28rpx;
+            font-weight: 500;
+          }
+        }
+
+        .form-input {
+          width: 100%;
+          height: 88rpx;
+          padding: 0 24rpx;
+          background: #f9fafb;
+          border: 2rpx solid #e5e7eb;
+          border-radius: 16rpx;
+          font-size: 28rpx;
+          color: #1f2937;
+          transition: all 0.3s ease;
+
+          &:focus {
+            background: white;
+            border-color: #3b82f6;
+          }
+        }
+
+        .input-placeholder {
+          color: #9ca3af;
+        }
+
+        /* 密码强度指示器 */
+        .password-strength-container {
+          display: flex;
+          align-items: center;
+          margin-top: 12rpx;
+          gap: 16rpx;
+
+          .strength-bars {
+            display: flex;
+            gap: 8rpx;
+            flex: 1;
+
+            .strength-bar {
+              height: 6rpx;
+              flex: 1;
+              background: #e5e7eb;
+              border-radius: 3rpx;
+              transition: all 0.3s ease;
+
+              &.weak {
+                background: #ef4444;
+              }
+
+              &.medium {
+                background: #f59e0b;
+              }
+
+              &.strong {
+                background: #10b981;
+              }
+            }
+          }
+
+          .strength-text {
+            font-size: 24rpx;
+            color: #6b7280;
+            white-space: nowrap;
+
+            &.error {
+              color: #ef4444;
+            }
+          }
+        }
+      }
+
+      .tips-section {
+        background: #fef3c7;
+        border-radius: 16rpx;
+        padding: 24rpx;
+        margin-top: 32rpx;
+
+        .tip-item {
+          font-size: 24rpx;
+          color: #92400e;
+          line-height: 2;
+          display: block;
+        }
+      }
+    }
+
+    .submit-button {
+      margin-top: 32rpx;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-radius: 16rpx;
+      height: 96rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8rpx 24rpx rgba(16, 185, 129, 0.4);
+      transition: all 0.3s ease;
+
+      &:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+      }
+
+      &.loading {
+        opacity: 0.7;
+        pointer-events: none;
+      }
+
+      .submit-text {
+        color: white;
+        font-size: 32rpx;
+        font-weight: bold;
+      }
+    }
+  }
+}

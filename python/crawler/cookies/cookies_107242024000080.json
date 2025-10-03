@@ -1,0 +1,36 @@
+{
+  "simple": {
+    "GSESSIONID": "7AA14613199F1363BD7EE21E46B8BE72",
+    "JSESSIONID": "7AA14613199F1363BD7EE21E46B8BE72",
+    "TGC": "TGT-115244-T9adMZ3Zyrg2SgLb5wt-jvscFgcee2s-pxtsPMErtlj6VDzF59MEVJa-bNEW2xtF-Vwcas-server-webapp-68c9b8944b-fqcfz",
+    "cookie_vjuid_login": "gJ3J2FQ4vNTPUBhQRdb%2B4lpiyiItFmRVGWOSLRyQgg5oU0t%2FY4u9NAoA2UF4m%2F7f",
+    "easy_session": "3zjdt1tqxmikv0poiyjz7bolfkn4ah28"
+  },
+  "detailed": {
+    "GSESSIONID": {
+      "value": "7AA14613199F1363BD7EE21E46B8BE72",
+      "domain": "jwxt.xisu.edu.cn",
+      "path": "/"
+    },
+    "JSESSIONID": {
+      "value": "7AA14613199F1363BD7EE21E46B8BE72",
+      "domain": "jwxt.xisu.edu.cn",
+      "path": "/eams"
+    },
+    "TGC": {
+      "value": "TGT-115244-T9adMZ3Zyrg2SgLb5wt-jvscFgcee2s-pxtsPMErtlj6VDzF59MEVJa-bNEW2xtF-Vwcas-server-webapp-68c9b8944b-fqcfz",
+      "domain": "login.xisu.edu.cn",
+      "path": "/cas/"
+    },
+    "cookie_vjuid_login": {
+      "value": "gJ3J2FQ4vNTPUBhQRdb%2B4lpiyiItFmRVGWOSLRyQgg5oU0t%2FY4u9NAoA2UF4m%2F7f",
+      "domain": "wsbsdt.xisu.edu.cn",
+      "path": "/"
+    },
+    "easy_session": {
+      "value": "3zjdt1tqxmikv0poiyjz7bolfkn4ah28",
+      "domain": "wsbsdt.xisu.edu.cn",
+      "path": "/"
+    }
+  }
+}
