@@ -9,7 +9,7 @@ class Announcement {
      */
     public static function getList($limit = 10, $offset = 0) {
         $stmt = DatabaseConfig::query(
-            "SELECT a.*, u.name as author_name FROM announcements a 
+            "SELECT a.*, u.username as author_name FROM announcements a 
              JOIN users u ON a.author_uid = u.uid 
              ORDER BY a.created_at DESC LIMIT ? OFFSET ?",
             [$limit, $offset]
@@ -22,7 +22,7 @@ class Announcement {
      */
     public static function getById($id) {
         $stmt = DatabaseConfig::query(
-            "SELECT a.*, u.name as author_name FROM announcements a 
+            "SELECT a.*, u.username as author_name FROM announcements a 
              JOIN users u ON a.author_uid = u.uid 
              WHERE a.id = ?",
             [$id]
@@ -34,12 +34,22 @@ class Announcement {
      * 创建公告
      */
     public static function create($data) {
-        $sql = "INSERT INTO announcements (title, content, author_uid) VALUES (?, ?, ?)";
-        return DatabaseConfig::insert($sql, [
-            $data['title'],
-            $data['content'],
-            $data['author_uid']
-        ]);
+        if (isset($data['images'])) {
+            $sql = "INSERT INTO announcements (title, content, author_uid, images) VALUES (?, ?, ?, ?)";
+            return DatabaseConfig::insert($sql, [
+                $data['title'],
+                $data['content'],
+                $data['author_uid'],
+                $data['images']
+            ]);
+        } else {
+            $sql = "INSERT INTO announcements (title, content, author_uid) VALUES (?, ?, ?)";
+            return DatabaseConfig::insert($sql, [
+                $data['title'],
+                $data['content'],
+                $data['author_uid']
+            ]);
+        }
     }
     
     /**

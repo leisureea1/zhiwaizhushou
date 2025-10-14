@@ -9,21 +9,12 @@ INSERT INTO announcements (title, content, author_uid) VALUES
 ('新学期开学通知', '各位同学，新学期将于9月1日正式开学，请大家按时到校报到。', 3),
 ('图书馆闭馆通知', '因设备维护，图书馆将于本周六全天闭馆，望周知。', 3);
 
--- 插入示例跳蚤市场数据
-INSERT INTO flea_market (title, description, price, image_url, publisher_uid, status) VALUES
-('二手笔记本电脑', '联想ThinkPad，2020年购买，性能良好', 1500.00, '/images/laptop.jpg', 1, 'approved'),
-('专业书籍出售', '多本计算机专业书籍，几乎全新', 200.00, '/images/books.jpg', 2, 'approved');
+INSERT INTO flea_market (title, description, price, image_url, image_urls, contact_info, wechat_qr_url, publisher_uid, status) VALUES
+('二手笔记本电脑', '联想ThinkPad，2020年购买，性能良好', 1500.00, '/images/laptop.jpg', '["/images/laptop_1.jpg","/images/laptop_2.jpg"]', '微信：sellerA', '/images/qr_sellerA.webp', 1, 'approved'),
+('专业书籍出售', '多本计算机专业书籍，几乎全新', 200.00, '/images/books.jpg', '["/images/books_1.jpg","/images/books_2.jpg"]', '手机：13800138001', '/images/qr_sellerB.webp', 2, 'approved');
 
--- 插入示例失物招领数据
-INSERT INTO lost_found (description, image_url, status, publisher_uid, contact_info) VALUES
-('丢失黑色钱包', '/images/wallet.jpg', 'lost', 1, '电话：13800138000'),
-('捡到钥匙串', '/images/keys.jpg', 'found', 2, '请联系学生会办公室');
+INSERT INTO lost_found (description, image_url, image_urls, status, publisher_uid, contact_info, wechat_qr_url) VALUES
+('丢失黑色钱包', '/images/wallet.jpg', '["/images/wallet_1.jpg"]', 'lost', 1, '电话：13800138000', '/images/qr_owner.webp'),
+('捡到钥匙串', '/images/keys.jpg', '["/images/keys_1.jpg","/images/keys_2.jpg"]', 'found', 2, '请联系学生会办公室', '/images/qr_office.webp');
 
--- 更新SMTP配置为实际可用的示例数据
-UPDATE smtp_config SET 
-    host = 'smtp.example.com',
-    port = 587,
-    username = 'test@example.com',
-    password = 'testpassword',
-    encryption = 'tls'
-WHERE id = 1;
+-- （已移除 smtp_config 示例数据，当前 schema 不再需要）

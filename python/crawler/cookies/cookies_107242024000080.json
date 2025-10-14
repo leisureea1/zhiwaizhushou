@@ -1,34 +1,34 @@
 {
   "simple": {
-    "GSESSIONID": "7AA14613199F1363BD7EE21E46B8BE72",
-    "JSESSIONID": "7AA14613199F1363BD7EE21E46B8BE72",
-    "TGC": "TGT-115244-T9adMZ3Zyrg2SgLb5wt-jvscFgcee2s-pxtsPMErtlj6VDzF59MEVJa-bNEW2xtF-Vwcas-server-webapp-68c9b8944b-fqcfz",
-    "cookie_vjuid_login": "gJ3J2FQ4vNTPUBhQRdb%2B4lpiyiItFmRVGWOSLRyQgg5oU0t%2FY4u9NAoA2UF4m%2F7f",
-    "easy_session": "3zjdt1tqxmikv0poiyjz7bolfkn4ah28"
+    "GSESSIONID": "865BBDF4B36A1D0C4DECB44426160564",
+    "JSESSIONID": "865BBDF4B36A1D0C4DECB44426160564",
+    "TGC": "TGT-23672-GUO-g0miKbKM5XET0QpRnJDt-mabyBOi4-KwhKaQ9BzXnQUDKJIjG12p72UN-7B--mEcas-server-webapp-68c9b8944b-5k95r",
+    "cookie_vjuid_login": "QlaXI7S4Hn917pTaFWwLnFpiyiItFmRVGWOSLRyQgg5oU0t%2FY4u9NAoA2UF4m%2F7f",
+    "easy_session": "xdgji15zonxt3o0kftsdbamslrerhpyu"
   },
   "detailed": {
     "GSESSIONID": {
-      "value": "7AA14613199F1363BD7EE21E46B8BE72",
+      "value": "865BBDF4B36A1D0C4DECB44426160564",
       "domain": "jwxt.xisu.edu.cn",
       "path": "/"
     },
     "JSESSIONID": {
-      "value": "7AA14613199F1363BD7EE21E46B8BE72",
+      "value": "865BBDF4B36A1D0C4DECB44426160564",
       "domain": "jwxt.xisu.edu.cn",
       "path": "/eams"
     },
     "TGC": {
-      "value": "TGT-115244-T9adMZ3Zyrg2SgLb5wt-jvscFgcee2s-pxtsPMErtlj6VDzF59MEVJa-bNEW2xtF-Vwcas-server-webapp-68c9b8944b-fqcfz",
+      "value": "TGT-23672-GUO-g0miKbKM5XET0QpRnJDt-mabyBOi4-KwhKaQ9BzXnQUDKJIjG12p72UN-7B--mEcas-server-webapp-68c9b8944b-5k95r",
       "domain": "login.xisu.edu.cn",
       "path": "/cas/"
     },
     "cookie_vjuid_login": {
-      "value": "gJ3J2FQ4vNTPUBhQRdb%2B4lpiyiItFmRVGWOSLRyQgg5oU0t%2FY4u9NAoA2UF4m%2F7f",
+      "value": "QlaXI7S4Hn917pTaFWwLnFpiyiItFmRVGWOSLRyQgg5oU0t%2FY4u9NAoA2UF4m%2F7f",
       "domain": "wsbsdt.xisu.edu.cn",
       "path": "/"
     },
     "easy_session": {
-      "value": "3zjdt1tqxmikv0poiyjz7bolfkn4ah28",
+      "value": "xdgji15zonxt3o0kftsdbamslrerhpyu",
       "domain": "wsbsdt.xisu.edu.cn",
       "path": "/"
     }

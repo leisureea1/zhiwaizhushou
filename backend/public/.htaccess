@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /
+
+# 直接访问真实存在的文件或目录
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# 其余请求全部交给 index.php 处理
+RewriteRule ^ index.php [L]

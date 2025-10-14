@@ -3,6 +3,14 @@ import Taro from '@tarojs/taro'
 // API 基础配置
 const BASE_URL = 'http://localhost:8000' // PHP后端地址
 
+export const API_BASE_URL = BASE_URL
+
+export const toAbsoluteUrl = (url?: string): string => {
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  return BASE_URL + url
+}
+
 interface RequestOptions {
   url: string
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -58,23 +66,27 @@ class ApiService {
   
   /**
    * 用户注册
+   * @param username 用户自定义的用户名
+   * @param name 从教务系统获取的真实姓名
    */
   async register(data: {
     username: string
+    name: string
     password: string
     studentId: string
     jwxtPassword: string
+    avatarUrl?: string
   }) {
     return this.request({
       url: '/api/user/register',
       method: 'POST',
       data: {
-        student_id: data.studentId,
-        name: data.username,
+        username: data.username,
+        name: data.name,
         password: data.password,
-        email: `${data.studentId}@temp.com`, // 临时邮箱，后续可让用户完善
         edu_system_username: data.studentId,
-        edu_system_password: data.jwxtPassword
+        edu_system_password: data.jwxtPassword,
+        avatar_url: data.avatarUrl
       }
     })
   }
@@ -87,7 +99,7 @@ class ApiService {
       url: '/api/user/login',
       method: 'POST',
       data: {
-        student_id: username,
+        username: username,
         password: password
       }
     })
@@ -137,15 +149,28 @@ class ApiService {
   }
 
   /**
-   * 验证用户凭据（用户名和学号是否匹配）
+   * 从教务系统获取用户信息(姓名等)
    */
-  async validateUserCredentials(username: string, studentId: string) {
+  async getUserInfoFromJwxt(studentId: string, password: string) {
+    return this.request({
+      url: '/api/user/get-jwxt-userinfo',
+      method: 'POST',
+      data: {
+        student_id: studentId,
+        password: password
+      }
+    })
+  }
+
+  /**
+   * 验证用户凭据（用户名是否存在）
+   */
+  async validateUserCredentials(username: string) {
     return this.request({
       url: '/api/user/validate-credentials',
       method: 'POST',
       data: {
-        username: username,
-        student_id: studentId
+        username: username
       }
     })
   }
@@ -161,6 +186,21 @@ class ApiService {
         user_id: userId,
         new_password: newPassword
       }
+    })
+  }
+
+  /**
+   * 更新用户头像
+   */
+  async updateAvatar(userId: string, avatarUrl: string) {
+    return this.request({
+      url: '/api/user/update-avatar',
+      method: 'POST',
+      data: {
+        user_id: userId,
+        avatar_url: avatarUrl
+      },
+      needAuth: true
     })
   }
 
@@ -248,12 +288,21 @@ class ApiService {
   /**
    * 获取跳蚤市场列表
    */
-  async getFleaMarketList(params?: { page?: number; limit?: number; status?: string }) {
+  async getFleaMarketList(params?: { page?: number; limit?: number; status?: string; category?: string; publisher_uid?: string | number; q?: string }) {
     const queryParts = [
       `page=${params?.page || 1}`,
       `limit=${params?.limit || 10}`,
       `status=${params?.status || 'approved'}`
     ]
+    if (params?.category) {
+      queryParts.push(`category=${encodeURIComponent(params.category)}`)
+    }
+    if (params?.publisher_uid) {
+      queryParts.push(`publisher_uid=${params.publisher_uid}`)
+    }
+    if (params?.q) {
+      queryParts.push(`q=${encodeURIComponent(params.q)}`)
+    }
     
     return this.request({
       url: `/api/flea-market?${queryParts.join('&')}`,
@@ -262,8 +311,11 @@ class ApiService {
   }
   
   async getFleaMarketDetail(id: string) {
+    const userInfo = Taro.getStorageSync('userInfo') || {}
+    const userId = userInfo.userId || userInfo.uid
+    const suffix = userId ? `&user_id=${userId}` : ''
     return this.request({
-      url: `/api/flea-market?id=${id}`,
+      url: `/api/flea-market?id=${id}${suffix}`,
       method: 'GET'
     })
   }
@@ -280,12 +332,38 @@ class ApiService {
     })
   }
 
+  async updateFleaMarketItem(id: string, data: any) {
+    try {
+      const userInfo = Taro.getStorageSync('userInfo') || {}
+      const userId = data?.user_id || userInfo.userId || userInfo.uid
+      const body = { ...data, user_id: userId }
+      return this.request({ url: `/api/flea-market/update?id=${id}`, method: 'POST', data: body, needAuth: true })
+    } catch (e) {
+      return this.request({ url: `/api/flea-market/update?id=${id}`, method: 'POST', data, needAuth: true })
+    }
+  }
+
+  async deleteFleaMarketItem(id: string, userId: string) {
+    return this.request({ url: `/api/flea-market/delete?id=${id}&user_id=${userId}`, method: 'POST', needAuth: true })
+  }
+
+  // ==================== 消息相关 ====================
+  async getMyMessages(params?: { page?: number; limit?: number; action?: string }) {
+    const userInfo = Taro.getStorageSync('userInfo') || {}
+    const userId = userInfo.userId || userInfo.uid
+    const page = params?.page || 1
+    const limit = params?.limit || 10
+    const action = params?.action
+    const actionPart = action ? `&action=${encodeURIComponent(action)}` : ''
+    return this.request({ url: `/api/message/list?user_id=${userId}&page=${page}&limit=${limit}${actionPart}`, method: 'GET', needAuth: true })
+  }
+
   // ==================== 失物招领相关 ====================
 
   /**
    * 获取失物招领列表
    */
-  async getLostFoundList(params?: { page?: number; limit?: number; status?: string }) {
+  async getLostFoundList(params?: { page?: number; limit?: number; status?: string; q?: string; publisher_uid?: string|number; category?: string }) {
     const queryParts = [
       `page=${params?.page || 1}`,
       `limit=${params?.limit || 10}`
@@ -293,6 +371,15 @@ class ApiService {
     
     if (params?.status) {
       queryParts.push(`status=${params.status}`)
+    }
+    if (params?.q) {
+      queryParts.push(`q=${encodeURIComponent(params.q)}`)
+    }
+    if (params?.publisher_uid) {
+      queryParts.push(`publisher_uid=${params.publisher_uid}`)
+    }
+    if (params?.category) {
+      queryParts.push(`category=${encodeURIComponent(params.category)}`)
     }
     
     return this.request({
@@ -319,6 +406,36 @@ class ApiService {
       needAuth: true
     })
   }
+
+  async updateLostFoundItem(id: string, data: any) {
+    // 注入 user_id 以便后端校验发布者
+    const userInfo = Taro.getStorageSync('userInfo') || {}
+    const userId = data?.user_id || userInfo.userId || userInfo.uid
+    const body = { ...data, user_id: userId }
+    return this.request({ url: `/api/lost-found/update?id=${id}`, method: 'POST', data: body, needAuth: true })
+  }
+
+    async deleteLostFoundItem(id: string, userId?: string|number) {
+    const uid = userId || (Taro.getStorageSync('userInfo')||{}).userId || (Taro.getStorageSync('userInfo')||{}).uid
+    return this.request({ url: `/api/lost-found/delete?id=${id}&user_id=${uid}`, method: 'POST', needAuth: true })
+  }
+
+  /**
+   * 更新用户活跃状态（小程序启动时调用）
+   */
+ 
+  async updateUserActivity(userId: string | number) {
+    return this.request({
+      url: '/api/user/update-activity',
+      method: 'POST',
+      data: {
+        user_id: userId
+      }
+    })
+  }
 }
+
+
+
 
 export const apiService = new ApiService()

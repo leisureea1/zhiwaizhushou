@@ -1,5 +1,5 @@
 import { Component } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import './index.scss'
 import { apiService } from '../../services/api'
@@ -9,7 +9,7 @@ type AppItem = { name: string; action: AppIconName; color: string }
 
 interface IndexState {
   apps: AppItem[]
-  announcements: Array<{ id: string; title: string }>
+  announcements: Array<{ id: string; title: string; cover?: string; excerpt?: string }>
   page: number
   limit: number
   hasMore: boolean
@@ -23,7 +23,7 @@ export default class IndexPage extends Component<any, IndexState> {
     apps: [
       { name: '成绩查询', action: 'grades', color: '#3b82f6' },
       { name: '校内地图', action: 'map', color: '#ef4444' },
-      { name: '成绩订阅', action: 'subscribe', color: '#eab308' },
+      { name: '流量卡办理', action: 'flowcard', color: '#eab308' },
       { name: '校内电话', action: 'phone', color: '#f97316' },
       { name: '跳蚤市场', action: 'market', color: '#fb923c' },
       { name: '失物招领', action: 'lost', color: '#2563eb' },
@@ -33,7 +33,7 @@ export default class IndexPage extends Component<any, IndexState> {
       { name: '本科招生', action: 'admission', color: '#dc2626' }
     ],
     // 公告数据
-    announcements: [] as Array<{ id: string; title: string }>,
+  announcements: [] as Array<{ id: string; title: string; cover?: string; excerpt?: string }>,
     page: 1,
     limit: 6,
     hasMore: true,
@@ -45,12 +45,39 @@ export default class IndexPage extends Component<any, IndexState> {
     this.loadAnnouncements(1)
   }
 
+  stripHtml = (html: string): string => {
+    if (!html) return ''
+    return String(html)
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .trim()
+  }
+
+  extractFirstImage = (html: string): string => {
+    if (!html) return ''
+    const match = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i)
+    return match?.[1] || ''
+  }
+
   /** @param {any} app */
   onAppClick = (app: AppItem) => {
     switch (app.action) {
       case 'grades':
         Taro.navigateTo({
           url: '/pages/grades/index'
+        })
+        break
+      case 'map':
+        Taro.navigateTo({ url: '/pages/map/index' })
+        break
+      case 'bus':
+        Taro.navigateTo({
+          url: '/pages/commute/index'
         })
         break
       case 'market':
@@ -63,8 +90,19 @@ export default class IndexPage extends Component<any, IndexState> {
           url: '/pages/lost-found/index'
         })
         break
+      case 'flowcard':
+        Taro.navigateTo({
+          url: '/pages/flowcard/index'
+        })
+        break
+      case 'admission':
+        // 跳转到其他小程序
+        Taro.navigateToMiniProgram({ appId: 'wx91ba9e5d920d9316' })
+        break
       case 'eleme':
-        this.showComingSoon(app.name)
+        Taro.setClipboardData({ data: 'https://to.ele.me/AK.je6ShmmM?alsc_exsrc=ch_app_chsub_wordlink' })
+          .then(()=> Taro.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }))
+          .catch(()=> Taro.showToast({ title: '复制失败，请重试', icon: 'none' }))
         break
       default:
         this.showComingSoon(app.name)
@@ -77,13 +115,39 @@ export default class IndexPage extends Component<any, IndexState> {
     this.setState({ loadingAnnouncements: true })
     try {
       const res: any = await apiService.getAnnouncements({ page, limit: this.state.limit })
-      const list: Array<{ id: string; title: string }> = res?.list || res?.data || []
+      const raw: any[] = res?.list || res?.data || []
+      const list: Array<{ id: string; title: string; cover?: string; excerpt?: string }> = raw.map((it: any) => {
+        const id = it?.id || it?._id || String(it?.id || it?._id || '')
+        const title = it?.title || it?.name || '公告'
+        
+        // 处理封面图片：优先从 images 数组获取第一张，否则尝试其他字段
+        let cover = ''
+        if (it?.images) {
+          try {
+            const imagesArray = typeof it.images === 'string' ? JSON.parse(it.images) : it.images
+            if (Array.isArray(imagesArray) && imagesArray.length > 0) {
+              cover = imagesArray[0]
+            }
+          } catch (e) {
+            console.warn('解析 images 字段失败', e)
+          }
+        }
+        if (!cover) {
+          cover = it?.cover || it?.thumbnail || it?.image || it?.pic || ''
+        }
+        
+        const excerpt = this.stripHtml(it?.excerpt || it?.summary || it?.content || '')
+        return { id, title, cover, excerpt }
+      })
       const hasMore = list.length >= this.state.limit
       this.setState(prev => ({
         announcements: page === 1 ? list : prev.announcements.concat(list),
         page,
         hasMore
-      }))
+      }), () => {
+        // 补充封面/摘要：若缺失则拉取详情进行富化（仅当前页）
+        this.enrichAnnouncements(page)
+      })
     } catch (e) {
       console.error('获取公告失败', e)
       Taro.showToast({ title: '公告加载失败', icon: 'none' })
@@ -92,28 +156,50 @@ export default class IndexPage extends Component<any, IndexState> {
     }
   }
 
-  // 点击公告，拉取详情并弹窗展示
-  onAnnouncementClick = async (id: string) => {
-    try {
-      const detail: any = await apiService.getAnnouncementDetail(id)
-      // 兼容多种后端返回结构
-      const title = detail?.title || detail?.data?.title || detail?.announcement?.title || '公告'
-      const contentRaw = detail?.content || detail?.data?.content || detail?.announcement?.content || detail?.body || ''
-      const text = String(contentRaw)
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .trim()
-      const content = text || '暂无内容'
-      Taro.showModal({ title, content: content.slice(0, 1000), showCancel: false })
-    } catch (e) {
-      console.error('获取公告详情失败', e)
-      Taro.showToast({ title: '获取详情失败', icon: 'none' })
+  // 拉详情补充封面和摘要（避免列表数据过于简陋）
+  enrichAnnouncements = async (page: number) => {
+    const startIndex = (page - 1) * this.state.limit
+    const endIndex = Math.min(startIndex + this.state.limit, this.state.announcements.length)
+    const slice = this.state.announcements.slice(startIndex, endIndex)
+    const toFetch = slice.filter(it => !it.cover || !it.excerpt)
+    if (!toFetch.length) return
+    for (const item of toFetch) {
+      try {
+        const detail: any = await apiService.getAnnouncementDetail(item.id)
+        const title = detail?.title || detail?.data?.title || detail?.announcement?.title || item.title
+        const rawContent = detail?.content || detail?.data?.content || detail?.announcement?.content || detail?.body || ''
+        
+        // 处理封面图片：优先从 images 数组获取，否则从内容中提取
+        let cover = item.cover
+        if (!cover && detail?.images) {
+          try {
+            const imagesArray = typeof detail.images === 'string' ? JSON.parse(detail.images) : detail.images
+            if (Array.isArray(imagesArray) && imagesArray.length > 0) {
+              cover = imagesArray[0]
+            }
+          } catch (e) {
+            console.warn('解析详情 images 字段失败', e)
+          }
+        }
+        if (!cover) {
+          cover = this.extractFirstImage(rawContent)
+        }
+        
+        const excerpt = item.excerpt && item.excerpt.length > 0 ? item.excerpt : this.stripHtml(rawContent).slice(0, 80)
+        this.setState(prev => ({
+          announcements: prev.announcements.map(a => a.id === item.id ? { ...a, title, cover, excerpt } : a)
+        }))
+      } catch (e) {
+        // 静默失败即可
+      }
     }
+  }
+
+  // 点击公告，跳转到详情页面
+  onAnnouncementClick = (id: string) => {
+    Taro.navigateTo({
+      url: `/pages/announcement-detail/index?id=${id}`
+    })
   }
 
   /** @param {string} appName */
@@ -187,11 +273,21 @@ export default class IndexPage extends Component<any, IndexState> {
               <View className="announcement-list">
                 {this.state.announcements.map(item => (
                   <View key={item.id} className="announcement-item" onClick={() => this.onAnnouncementClick(item.id)}>
-                    <Text className="announcement-text">{item.title}</Text>
+                    <View className="cover">
+                      {item.cover ? (
+                        <Image className="cover-image" src={item.cover} mode="aspectFill" />
+                      ) : (
+                        <View className="cover-placeholder" />
+                      )}
+                    </View>
+                    <View className="meta">
+                      <Text className="announcement-item-title">{item.title}</Text>
+                      <Text className="announcement-excerpt">{item.excerpt || '暂无摘要'}</Text>
+                    </View>
                   </View>
                 ))}
                 {!this.state.announcements.length && (
-                  <View className="announcement-item">
+                  <View className="announcement-empty">
                     <Text className="announcement-text">暂无公告</Text>
                   </View>
                 )}

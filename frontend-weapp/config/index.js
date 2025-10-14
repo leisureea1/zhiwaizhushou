@@ -30,13 +30,15 @@ const config = {
     '@/assets': path.resolve(__dirname, '..', 'src/assets')
   },
   copy: {
-    patterns: [],
+    patterns: [
+      { from: 'src/assets/images/weapp.png', to: 'assets/images/weapp.png' }
+    ],
     options: {}
   },
   framework: 'react',
   compiler: 'webpack5',
   cache: {
-    enable: false // Webpack 持久化缓存配置，建议开启
+    enable: false // 开发模式暂时关闭持久化缓存，规避缓存引起的白屏/热更新问题
   },
   mini: {
     postcss: {

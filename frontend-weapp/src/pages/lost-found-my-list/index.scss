@@ -1,0 +1,17 @@
+.lf-mylist-page{position:relative;min-height:100vh;background:#f8f9fa}
+.status-bar{background:#fff}
+.nav{position:fixed;top:0;left:0;right:0;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:16rpx 24rpx;box-shadow:0 1rpx 0 rgba(0,0,0,.04);z-index:999}
+.back{font-size:48rpx;color:#111827;display:inline-block;padding:16rpx 20rpx}
+.title{font-size:34rpx;font-weight:700;color:#111827}
+.list{height:100vh}
+.list-inner{padding-top:120rpx;padding-bottom:60rpx}
+.item{display:flex;align-items:center;justify-content:space-between;background:#fff;margin:16rpx 24rpx;border-radius:12rpx;overflow:hidden}
+.cover{width:160rpx;height:160rpx;background:#eee}
+.meta{flex:1;padding:0 16rpx}
+.meta .title{font-size:28rpx;color:#111}
+.status{font-size:24rpx;color:#6b7280;margin-top:8rpx}
+.ops{display:flex;align-items:center}
+.btn{padding:16rpx 20rpx}
+.btn.edit Text{color:#3b82f6}
+.btn.del Text{color:#ef4444}
+.bottom-space{height:40rpx}

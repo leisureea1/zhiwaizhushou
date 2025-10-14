@@ -22,8 +22,14 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       try {
         const result = await ApiService.adminLogin(formData.username, formData.password);
         if (result.message === '登录成功') {
-          // 登录成功，保存token到localStorage
+          // 登录成功，保存token和用户信息到localStorage
           localStorage.setItem('adminToken', result.token);
+          localStorage.setItem('adminUser', JSON.stringify({
+            user_id: result.user_id,
+            username: result.username,
+            name: result.name,
+            role: result.role
+          }));
           onLogin();
         } else {
           alert('登录失败：' + result.error);

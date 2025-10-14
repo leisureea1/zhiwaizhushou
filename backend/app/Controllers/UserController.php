@@ -19,7 +19,7 @@ class UserController {
         }
         
         // 验证必填字段
-        $requiredFields = ['student_id', 'name', 'password', 'email', 'edu_system_username', 'edu_system_password'];
+        $requiredFields = ['username', 'name', 'password', 'edu_system_username', 'edu_system_password'];
         foreach ($requiredFields as $field) {
             if (empty($input[$field])) {
                 http_response_code(400);
@@ -29,17 +29,10 @@ class UserController {
         }
         
         try {
-            // 检查学号是否已存在
-            if (User::findByStudentId($input['student_id'])) {
+            // 检查用户名是否已存在
+            if (User::findByUsername($input['username'])) {
                 http_response_code(409);
-                echo json_encode(['error' => '该学号已被注册']);
-                return;
-            }
-            
-            // 检查邮箱是否已存在
-            if (User::findByEmail($input['email'])) {
-                http_response_code(409);
-                echo json_encode(['error' => '该邮箱已被注册']);
+                echo json_encode(['error' => '该用户名已被注册']);
                 return;
             }
             
@@ -48,12 +41,12 @@ class UserController {
             
             // 创建用户
             $userId = User::create([
-                'student_id' => $input['student_id'],
+                'username' => $input['username'],
                 'name' => $input['name'],
                 'password_hash' => $passwordHash,
+                'avatar_url' => $input['avatar_url'] ?? null,
                 'edu_system_username' => $input['edu_system_username'],
-                'edu_system_password' => $input['edu_system_password'], // 明文存储（按要求）
-                'email' => $input['email']
+                'edu_system_password' => $input['edu_system_password'] // 明文存储（按要求）
             ]);
             
             // 记录日志
@@ -62,7 +55,8 @@ class UserController {
             // 返回成功响应
             echo json_encode([
                 'message' => '注册成功',
-                'user_id' => $userId
+                'user_id' => $userId,
+                'avatar_url' => $input['avatar_url'] ?? null
             ]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -84,8 +78,8 @@ class UserController {
             return;
         }
         
-        // 验证必填字段 - 支持用户名或学号登录
-        $username = $input['username'] ?? $input['student_id'] ?? '';
+        // 验证必填字段
+        $username = $input['username'] ?? '';
         $password = $input['password'] ?? '';
         
         if (empty($username) || empty($password)) {
@@ -95,14 +89,8 @@ class UserController {
         }
         
         try {
-            // 先尝试通过学号查找
-            $user = User::findByStudentId($username);
-            
-            // 如果找不到，尝试通过name字段查找（用户名）
-            if (!$user) {
-                // 这里需要在User模型中添加findByName方法
-                $user = User::findByName($username);
-            }
+            // 通过用户名查找
+            $user = User::findByUsername($username);
             
             if (!$user) {
                 http_response_code(401);
@@ -118,30 +106,33 @@ class UserController {
                 return;
             }
             
-            // 暂时跳过邮箱验证检查，方便测试
-            // if (!$user['email_verified']) {
-            //     http_response_code(403);
-            //     echo json_encode(['error' => '请先验证邮箱']);
-            //     SystemLog::log($user['uid'], 'login_failed', '邮箱未验证');
-            //     return;
-            // }
-            
             // 生成访问令牌（简化实现，实际应使用JWT等）
             $token = bin2hex(random_bytes(32));
             
+            // 获取客户端IP地址
+            $loginIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            if (strpos($loginIp, ',') !== false) {
+                $loginIp = explode(',', $loginIp)[0];
+            }
+            $loginIp = trim($loginIp);
+            
+            // 更新登录信息
+            User::updateLoginInfo($user['uid'], $loginIp);
+            
             // 记录日志
-            SystemLog::log($user['uid'], 'user_login', '用户登录成功');
+            SystemLog::log($user['uid'], 'user_login', '用户登录成功，IP: ' . $loginIp);
             
             // 返回成功响应
             echo json_encode([
                 'message' => '登录成功',
                 'user_id' => $user['uid'],
-                'student_id' => $user['student_id'],
+                'username' => $user['username'],
                 'name' => $user['name'],
                 'role' => $user['role'],
                 'token' => $token,
                 'edu_system_username' => $user['edu_system_username'],
-                'edu_system_password' => $user['edu_system_password']
+                'edu_system_password' => $user['edu_system_password'],
+                'avatar_url' => $user['avatar_url'] ?? null
             ]);
         } catch (Exception $e) {
             http_response_code(500);
@@ -221,6 +212,81 @@ class UserController {
      */
     public function verifyJwxtCredentials() {
         // 获取POST数据
+        $raw = file_get_contents('php://input');
+        $input = json_decode($raw, true);
+        require_once dirname(__DIR__) . '/Utils/Logger.php';
+        Logger::log('verifyJwxt.start', [
+            'raw_body_len' => strlen($raw),
+            'raw_snippet' => mb_substr($raw, 0, 200, 'UTF-8')
+        ]);
+        
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => '无效的请求数据']);
+            Logger::log('verifyJwxt.invalid_json', null);
+            return;
+        }
+        
+        // 验证必填字段
+        if (empty($input['student_id']) || empty($input['password'])) {
+            http_response_code(400);
+            echo json_encode(['error' => '学号和密码不能为空']);
+            Logger::log('verifyJwxt.missing_fields', ['has_student_id' => !empty($input['student_id']), 'has_password' => !empty($input['password'])]);
+            return;
+        }
+        
+        try {
+            // 调用教务系统API验证
+            require_once dirname(__DIR__) . '/Services/JwxtApiService.php';
+            $jwxtService = new JwxtApiService();
+            $t0 = microtime(true);
+            
+            // 尝试获取用户信息来验证账号密码
+            $userInfo = $jwxtService->getUserInfo(
+                $input['student_id'],
+                $input['password']
+            );
+            $dt = round((microtime(true) - $t0) * 1000);
+            Logger::log('verifyJwxt.after_service', ['elapsed_ms' => $dt, 'userInfo_keys' => is_array($userInfo) ? array_keys($userInfo) : gettype($userInfo)]);
+            
+            // 如果有错误，说明账号密码不正确或下游异常
+            if (isset($userInfo['error'])) {
+                Logger::log('verifyJwxt.service_error', $userInfo);
+                $resp = [
+                    'valid' => false,
+                    'message' => '学号或密码错误',
+                    // 调试信息（前端调试期可查看）
+                    'debug' => [
+                        'reason' => $userInfo['error'],
+                        'detail' => $userInfo['detail'] ?? ($userInfo['trace'] ?? null)
+                    ]
+                ];
+                echo json_encode($resp, JSON_UNESCAPED_UNICODE);
+                return;
+            }
+            
+            // 验证成功
+            Logger::log('verifyJwxt.success', ['student_id' => $input['student_id'], 'name' => $userInfo['name'] ?? null]);
+            echo json_encode([
+                'valid' => true,
+                'message' => '验证成功'
+            ]);
+            
+        } catch (Exception $e) {
+            http_response_code(500);
+            Logger::log('verifyJwxt.exception', ['msg' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            echo json_encode([
+                'valid' => false,
+                'error' => '验证失败: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * 从教务系统获取用户信息(姓名等)
+     */
+    public function getJwxtUserInfo() {
+        // 获取POST数据
         $input = json_decode(file_get_contents('php://input'), true);
         
         if (!$input) {
@@ -237,42 +303,39 @@ class UserController {
         }
         
         try {
-            // 调用教务系统API验证
+            // 调用教务系统API获取用户信息
             require_once dirname(__DIR__) . '/Services/JwxtApiService.php';
             $jwxtService = new JwxtApiService();
             
-            // 尝试获取用户信息来验证账号密码
             $userInfo = $jwxtService->getUserInfo(
                 $input['student_id'],
                 $input['password']
             );
             
-            // 如果有错误，说明账号密码不正确
             if (isset($userInfo['error'])) {
-                echo json_encode([
-                    'valid' => false,
-                    'message' => '学号或密码错误'
-                ]);
+                http_response_code(500);
+                echo json_encode(['error' => '获取用户信息失败: ' . $userInfo['error']]);
                 return;
             }
             
-            // 验证成功
+            // 返回用户信息
             echo json_encode([
-                'valid' => true,
-                'message' => '验证成功'
+                'success' => true,
+                'name' => $userInfo['name'] ?? '',
+                'student_id' => $userInfo['student_id'] ?? $input['student_id'],
+                'department' => $userInfo['department'] ?? '',
+                'major' => $userInfo['major'] ?? '',
+                'class_name' => $userInfo['class_name'] ?? ''
             ]);
             
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode([
-                'valid' => false,
-                'error' => '验证失败: ' . $e->getMessage()
-            ]);
+            echo json_encode(['error' => '获取失败: ' . $e->getMessage()]);
         }
     }
     
     /**
-     * 验证用户凭据（用户名和学号是否匹配）
+     * 验证用户凭据（用户名是否存在）
      */
     public function validateUserCredentials() {
         // 获取POST数据
@@ -285,29 +348,20 @@ class UserController {
         }
         
         // 验证必填字段
-        if (empty($input['username']) || empty($input['student_id'])) {
+        if (empty($input['username'])) {
             http_response_code(400);
-            echo json_encode(['error' => '用户名和学号不能为空']);
+            echo json_encode(['error' => '用户名不能为空']);
             return;
         }
         
         try {
-            // 查找用户（通过学号）
-            $user = User::findByStudentId($input['student_id']);
+            // 查找用户（通过用户名）
+            $user = User::findByUsername($input['username']);
             
             if (!$user) {
                 echo json_encode([
                     'valid' => false,
-                    'message' => '该学号未注册'
-                ]);
-                return;
-            }
-            
-            // 验证用户名是否匹配
-            if ($user['name'] !== $input['username']) {
-                echo json_encode([
-                    'valid' => false,
-                    'message' => '用户名与学号不匹配'
+                    'message' => '该用户名未注册'
                 ]);
                 return;
             }
@@ -439,6 +493,104 @@ class UserController {
             http_response_code(500);
             echo json_encode(['error' => '修改失败: ' . $e->getMessage()]);
             SystemLog::log(null, 'change_password_error', '修改密码失败: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 更新用户活跃状态（小程序启动时调用）
+     */
+    public function updateActivity() {
+        // 获取POST数据
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => '无效的请求数据']);
+            return;
+        }
+        
+        // 验证必填字段
+        if (empty($input['user_id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => '用户ID不能为空']);
+            return;
+        }
+        
+        try {
+            // 查找用户
+            $user = User::findById($input['user_id']);
+            
+            if (!$user) {
+                http_response_code(404);
+                echo json_encode(['error' => '用户不存在']);
+                return;
+            }
+            
+            // 获取客户端IP地址
+            $loginIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            if (strpos($loginIp, ',') !== false) {
+                $loginIp = explode(',', $loginIp)[0];
+            }
+            $loginIp = trim($loginIp);
+            
+            // 更新登录信息
+            User::updateLoginInfo($input['user_id'], $loginIp);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => '活跃状态已更新'
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => '更新失败: ' . $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * 更新用户头像
+     */
+    public function updateAvatar() {
+        // 获取POST数据
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        if (!$input) {
+            http_response_code(400);
+            echo json_encode(['error' => '无效的请求数据']);
+            return;
+        }
+        
+        // 验证必填字段
+        if (empty($input['user_id']) || empty($input['avatar_url'])) {
+            http_response_code(400);
+            echo json_encode(['error' => '用户ID和头像URL不能为空']);
+            return;
+        }
+        
+        try {
+            // 查找用户
+            $user = User::findById($input['user_id']);
+            
+            if (!$user) {
+                http_response_code(404);
+                echo json_encode(['error' => '用户不存在']);
+                return;
+            }
+            
+            // 更新头像
+            User::updateAvatar($input['user_id'], $input['avatar_url']);
+            
+            // 记录日志
+            SystemLog::log($input['user_id'], 'avatar_updated', '用户头像已更新: ' . $input['avatar_url']);
+            
+            echo json_encode([
+                'success' => true,
+                'message' => '头像更新成功',
+                'avatar_url' => $input['avatar_url']
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => '更新失败: ' . $e->getMessage()]);
+            SystemLog::log(null, 'avatar_update_error', '更新头像失败: ' . $e->getMessage());
         }
     }
 }

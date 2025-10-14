@@ -1,3 +1,6 @@
 export default {
-  navigationBarTitleText: '跳蚤市场'
+  navigationStyle: 'custom',
+  enablePullDownRefresh: false,
+  backgroundTextStyle: 'dark'
 }
+

@@ -9,8 +9,51 @@ class JwxtApiService {
     private $crawlerDir;
     
     public function __construct() {
-        $this->pythonPath = 'python3'; // 可根据需要调整Python路径
-        $this->crawlerDir = dirname(__DIR__, 2) . '/../python/crawler';
+        require_once dirname(__DIR__) . '/Utils/Logger.php';
+        $this->pythonPath = 'python'; // 可根据需要调整Python路径
+        $this->crawlerDir = str_replace('\\', '/', dirname(__DIR__, 2) . '/../python/crawler');
+        if (class_exists('Logger')) {
+            Logger::log('JwxtApiService.init', [
+                'pythonPath' => $this->pythonPath,
+                'crawlerDir' => $this->crawlerDir,
+            ]);
+        }
+    }
+    
+    /**
+     * 安全删除临时文件
+     * 只允许删除系统临时目录中的文件,防止路径遍历攻击
+     *
+     * @param string $filePath 文件路径
+     * @return bool 是否删除成功
+     */
+    private function safeDeleteTempFile($filePath) {
+        if (!file_exists($filePath)) {
+            return false;
+        }
+        
+        // 获取真实路径
+        $realPath = realpath($filePath);
+        if ($realPath === false) {
+            error_log("[JwxtApiService] Invalid file path: {$filePath}");
+            return false;
+        }
+        
+        // 获取系统临时目录的真实路径
+        $tempDir = realpath(sys_get_temp_dir());
+        if ($tempDir === false) {
+            error_log("[JwxtApiService] Unable to get temp directory");
+            return false;
+        }
+        
+        // 验证文件是否在系统临时目录中
+        if (strpos($realPath, $tempDir) !== 0) {
+            error_log("[JwxtApiService] Attempted to delete file outside temp directory: {$realPath}");
+            return false;
+        }
+        
+        // 安全删除文件
+        return @unlink($realPath);
     }
     
     /**
@@ -97,9 +140,16 @@ class JwxtApiService {
         return "
 import sys
 import json
+import io
 sys.path.insert(0, '{$this->crawlerDir}')
 
 try:
+    # 强制标准输出为 UTF-8，避免 Windows 控制台编码导致乱码
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    else:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
     from jwxt_api import JwxtAPI
     
     # 创建API实例
@@ -109,19 +159,19 @@ try:
     login_result = api.login('{$username}', '{$password}')
     
     if not login_result.get('success'):
-        print(json.dumps({'error': '登录失败: ' + login_result.get('error', '未知错误'), 'success': False}, ensure_ascii=False))
+        print(json.dumps({'error': '登录失败: ' + login_result.get('error', '未知错误'), 'success': False}, ensure_ascii=True))
         sys.exit(0)
     
     # 调用API获取学期列表
     semesters_data = api.get_available_semesters()
     
     # 输出结果
-    print(json.dumps(semesters_data, ensure_ascii=False, indent=2))
+    print(json.dumps(semesters_data, ensure_ascii=True, indent=2))
     
 except Exception as e:
     import traceback
     error_detail = traceback.format_exc()
-    print(json.dumps({'error': 'Python异常: ' + str(e), 'success': False, 'detail': error_detail}, ensure_ascii=False))
+    print(json.dumps({'error': 'Python异常: ' + str(e), 'success': False, 'detail': error_detail}, ensure_ascii=True))
     sys.exit(0)
 ";
     }
@@ -149,8 +199,11 @@ try:
     login_result = api.login('{$username}', '{$password}')
     
     if not login_result.get('success'):
-        print(json.dumps({'error': '登录失败: ' + login_result.get('error', '未知错误')}))
-        sys.exit(1)
+        import traceback
+        detail = login_result.get('error_detail') or login_result.get('error') or '未知错误'
+        out = {'success': False, 'stage': 'login', 'error': '登录失败', 'detail': detail}
+        print(json.dumps(out, ensure_ascii=True))
+        sys.exit(0)
     
     # 导入user_info模块
     from user_info import get_user_info
@@ -159,11 +212,15 @@ try:
     user_info = get_user_info(api.session)
     
     # 输出结果
-    print(json.dumps(user_info, ensure_ascii=False, indent=2))
+    if isinstance(user_info, dict):
+        user_info['success'] = True
+    print(json.dumps(user_info, ensure_ascii=True, indent=2))
     
 except Exception as e:
-    print(json.dumps({'error': 'Python异常: ' + str(e)}))
-    sys.exit(1)
+    import traceback
+    error_detail = traceback.format_exc()
+    print(json.dumps({'success': False, 'error': 'Python异常', 'detail': str(e), 'trace': error_detail}, ensure_ascii=True))
+    sys.exit(0)
 ";
     }
     
@@ -184,6 +241,7 @@ import sys
 import json
 import os
 import re
+import io
 
 # 添加项目路径到Python路径
 sys.path.insert(0, '" . dirname($this->crawlerDir) . "')
@@ -201,6 +259,12 @@ def extract_json_from_output(output):
     return None
 
 try:
+    # 强制标准输出为 UTF-8，避免 Windows 控制台编码导致乱码
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    else:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
     # 导入模块
     from crawler.jwxt_api import JwxtAPI
     
@@ -211,7 +275,7 @@ try:
     login_result = api.login('{$username}', '{$password}')
     
     if not login_result.get('success'):
-        print(json.dumps({'error': '登录失败: ' + login_result.get('error', '未知错误')}))
+        print(json.dumps({'error': '登录失败: ' + login_result.get('error', '未知错误')}, ensure_ascii=True))
         sys.exit(1)
     
     result = {'username': '{$username}'}
@@ -262,7 +326,7 @@ try:
             result['error'] = '获取成绩失败: ' + grades.get('error', '未知错误')
     
     # 输出结果
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    print(json.dumps(result, ensure_ascii=True, indent=2))
     
 except Exception as e:
     import traceback
@@ -273,7 +337,7 @@ except Exception as e:
         'success': False,
         'error': 'Python执行异常: ' + str(e),
         'detail': error_detail
-    }, ensure_ascii=False))
+    }, ensure_ascii=True))
     sys.exit(0)
 ";
     }
@@ -293,16 +357,29 @@ except Exception as e:
         error_log("[JwxtApiService] Python temp file: " . $tempFile);
         
         try {
-            // 执行Python脚本
-            $command = "{$this->pythonPath} {$tempFile} 2>&1";
+            // 执行Python脚本 - 使用 escapeshellarg 防止命令注入
+            $safePythonPath = escapeshellarg($this->pythonPath);
+            $safeTempFile = escapeshellarg($tempFile);
+            $command = "{$safePythonPath} {$safeTempFile} 2>&1";
+            $t0 = microtime(true);
             $output = shell_exec($command);
+            $elapsed = round((microtime(true) - $t0) * 1000);
             
             // 记录原始输出
+            error_log("[JwxtApiService] Command: {$command}");
+            error_log("[JwxtApiService] Elapsed(ms): {$elapsed}");
             error_log("[JwxtApiService] Python output length: " . strlen($output));
-            error_log("[JwxtApiService] Python output (first 1000 chars): " . substr($output, 0, 1000));
+            error_log("[JwxtApiService] Python output (first 2000 chars): " . substr($output, 0, 2000));
+            if (class_exists('Logger')) {
+                Logger::log('JwxtApiService.raw_output', [
+                    'elapsed_ms' => $elapsed,
+                    'len' => strlen($output),
+                    'head' => mb_substr($output, 0, 2000, 'UTF-8')
+                ]);
+            }
             
-            // 删除临时文件
-            unlink($tempFile);
+            // 安全删除临时文件
+            $this->safeDeleteTempFile($tempFile);
             
             // 如果输出为空或只包含空白字符
             if (empty(trim($output))) {
@@ -319,6 +396,9 @@ except Exception as e:
                     return ['error' => '登录失败: 网络请求失败: 401 Client Error'];
                 }
                 error_log("[JwxtApiService] Failed to extract JSON from output");
+                if (class_exists('Logger')) {
+                    Logger::log('JwxtApiService.json_extract_failed', [ 'head' => mb_substr($output, 0, 500, 'UTF-8') ]);
+                }
                 return ['error' => 'Python脚本输出无效: 无法解析JSON (输出: ' . substr($output, 0, 500) . ')'];
             }
             
@@ -337,10 +417,8 @@ except Exception as e:
             
             return $data ?: ['error' => 'Python脚本未返回有效数据'];
         } catch (Exception $e) {
-            // 确保删除临时文件
-            if (file_exists($tempFile)) {
-                unlink($tempFile);
-            }
+            // 确保安全删除临时文件
+            $this->safeDeleteTempFile($tempFile);
             return ['error' => '执行Python脚本时发生错误: ' . $e->getMessage()];
         }
     }
@@ -360,6 +438,16 @@ except Exception as e:
         if ($start !== false && $end !== false && $end > $start) {
             $jsonStr = substr($output, $start, $end - $start + 1);
             // 验证这是否是一个有效的JSON
+            json_decode($jsonStr);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $jsonStr;
+            }
+        }
+        // 兼容数组 JSON 输出 [ ... ]
+        $startArr = strpos($output, '[');
+        $endArr = strrpos($output, ']');
+        if ($startArr !== false && $endArr !== false && $endArr > $startArr) {
+            $jsonStr = substr($output, $startArr, $endArr - $startArr + 1);
             json_decode($jsonStr);
             if (json_last_error() === JSON_ERROR_NONE) {
                 return $jsonStr;

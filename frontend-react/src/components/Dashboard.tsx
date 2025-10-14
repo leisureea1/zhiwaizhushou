@@ -1,73 +1,18 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Users, Megaphone, ShoppingBag, Package, TrendingUp, Activity } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Users, Megaphone, ShoppingBag, Package, AlertCircle } from 'lucide-react';
 import ApiService from '../services/api';
 
-const statsData = [
-  {
-    title: '用户总数',
-    value: '2,847',
-    change: '+12%',
-    changeType: 'positive',
-    icon: Users,
-    color: 'bg-blue-500'
-  },
-  {
-    title: '公告数量',
-    value: '156',
-    change: '+8%',
-    changeType: 'positive',
-    icon: Megaphone,
-    color: 'bg-green-500'
-  },
-  {
-    title: '二手物品',
-    value: '1,234',
-    change: '+23%',
-    changeType: 'positive',
-    icon: ShoppingBag,
-    color: 'bg-orange-500'
-  },
-  {
-    title: '失物招领',
-    value: '89',
-    change: '-5%',
-    changeType: 'negative',
-    icon: Package,
-    color: 'bg-purple-500'
-  }
-];
-
-const chartData = [
-  { name: '1月', users: 400, announcements: 24, items: 240 },
-  { name: '2月', users: 300, announcements: 13, items: 220 },
-  { name: '3月', users: 200, announcements: 98, items: 229 },
-  { name: '4月', users: 278, announcements: 39, items: 200 },
-  { name: '5月', users: 189, announcements: 48, items: 218 },
-  { name: '6月', users: 239, announcements: 38, items: 250 },
-  { name: '7月', users: 349, announcements: 43, items: 210 }
-];
-
-const activityData = [
-  { name: '周一', value: 400 },
-  { name: '周二', value: 300 },
-  { name: '周三', value: 500 },
-  { name: '周四', value: 280 },
-  { name: '周五', value: 590 },
-  { name: '周六', value: 320 },
-  { name: '周日', value: 200 }
-];
-
 export function Dashboard() {
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   const [stats, setStats] = React.useState({
-    totalUsers: 0,
-    totalCourses: 0,
-    totalAnnouncements: 0,
-    totalLostItems: 0
+    user_count: 0,
+    announcement_count: 0,
+    item_count: 0
   });
+  const [recentAnnouncements, setRecentAnnouncements] = React.useState<any[]>([]);
+  const [pendingItems, setPendingItems] = React.useState<any[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     fetchDashboardData();
@@ -76,26 +21,83 @@ export function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await ApiService.getDashboardStats();
-      setStats(data);
+      setError(null);
+      
+      // 并行获取所有数据
+      const [statsData, announcementsData, itemsData] = await Promise.all([
+        ApiService.getDashboardStats(),
+        ApiService.getRecentAnnouncements(),
+        ApiService.getPendingItems()
+      ]);
+      
+      // 处理统计数据
+      if (statsData.error) {
+        setError(statsData.error);
+      } else {
+        setStats({
+          user_count: statsData.user_count || 0,
+          announcement_count: statsData.announcement_count || 0,
+          item_count: statsData.item_count || 0
+        });
+      }
+
+      // 处理最近公告
+      if (announcementsData.announcements) {
+        setRecentAnnouncements(announcementsData.announcements);
+      }
+
+      // 处理待审核物品
+      if (itemsData.items) {
+        setPendingItems(itemsData.items);
+      }
     } catch (error) {
       console.error('获取仪表板数据失败:', error);
-      // 如果API调用失败，使用示例数据
-      setStats({
-        totalUsers: 1250,
-        totalCourses: 85,
-        totalAnnouncements: 32,
-        totalLostItems: 15
-      });
+      setError('获取数据失败，请稍后重试');
     } finally {
       setLoading(false);
     }
   };
 
+  const statsData = [
+    {
+      title: '用户总数',
+      value: loading ? '...' : stats.user_count.toString(),
+      icon: Users,
+      color: 'bg-blue-500',
+      description: '平台注册用户'
+    },
+    {
+      title: '公告数量',
+      value: loading ? '...' : stats.announcement_count.toString(),
+      icon: Megaphone,
+      color: 'bg-green-500',
+      description: '已发布公告'
+    },
+    {
+      title: '二手物品',
+      value: loading ? '...' : stats.item_count.toString(),
+      icon: ShoppingBag,
+      color: 'bg-orange-500',
+      description: '跳蚤市场商品'
+    }
+  ];
+
   return (
     <div className="space-y-6">
-      {/* 概览卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* 错误提示 */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <AlertCircle className="w-5 h-5" />
+              <span>{error}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 统计数据卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {statsData.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -108,116 +110,79 @@ export function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  <Badge variant={stat.changeType === 'positive' ? 'default' : 'destructive'} className="text-xs">
-                    {stat.change}
-                  </Badge>
-                  <span>较上月</span>
-                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stat.description}
+                </p>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      {/* 图表区域 */}
+      {/* 最近活动 */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* 趋势图 */}
+        {/* 最近公告 */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5" />
-              <span>活动趋势</span>
+              <Megaphone className="w-5 h-5" />
+              <span>最近公告</span>
             </CardTitle>
-            <CardDescription>最近7个月的系统活动趋势</CardDescription>
+            <CardDescription>最近发布的5条公告</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="users" 
-                  stroke="#4F46E5" 
-                  strokeWidth={2}
-                  name="用户活动"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="announcements" 
-                  stroke="#10B981" 
-                  strokeWidth={2}
-                  name="公告发布"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="items" 
-                  stroke="#F59E0B" 
-                  strokeWidth={2}
-                  name="物品交易"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">加载中...</div>
+            ) : recentAnnouncements.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">暂无公告</div>
+            ) : (
+              <div className="space-y-4">
+                {recentAnnouncements.map((announcement) => (
+                  <div key={announcement.id} className="flex items-start justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{announcement.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        发布时间: {new Date(announcement.created_at).toLocaleDateString('zh-CN')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* 活动统计 */}
+        {/* 待审核物品 */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Activity className="w-5 h-5" />
-              <span>周活动统计</span>
+              <ShoppingBag className="w-5 h-5" />
+              <span>待审核物品</span>
             </CardTitle>
-            <CardDescription>本周各日活跃度统计</CardDescription>
+            <CardDescription>等待审核的跳蚤市场商品</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={activityData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value" fill="#4F46E5" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">加载中...</div>
+            ) : pendingItems.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">暂无待审核物品</div>
+            ) : (
+              <div className="space-y-4">
+                {pendingItems.map((item) => (
+                  <div key={item.id} className="flex items-start justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{item.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        提交时间: {new Date(item.created_at).toLocaleDateString('zh-CN')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* 快速操作 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>快速操作</CardTitle>
-          <CardDescription>常用功能快速入口</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-              <Users className="w-8 h-8 text-blue-500 mb-2" />
-              <h3 className="font-medium">添加用户</h3>
-              <p className="text-sm text-gray-500">添加新的系统用户</p>
-            </div>
-            <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-              <Megaphone className="w-8 h-8 text-green-500 mb-2" />
-              <h3 className="font-medium">发布公告</h3>
-              <p className="text-sm text-gray-500">发布系统公告</p>
-            </div>
-            <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-              <ShoppingBag className="w-8 h-8 text-orange-500 mb-2" />
-              <h3 className="font-medium">商品审核</h3>
-              <p className="text-sm text-gray-500">审核二手商品</p>
-            </div>
-            <div className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-              <Package className="w-8 h-8 text-purple-500 mb-2" />
-              <h3 className="font-medium">处理失物</h3>
-              <p className="text-sm text-gray-500">处理失物招领</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

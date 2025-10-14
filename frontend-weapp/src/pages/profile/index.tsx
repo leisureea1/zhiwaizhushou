@@ -1,5 +1,5 @@
 import { Component } from 'react'
-import { View, Text, Image } from '@tarojs/components'
+import { View, Text, Image, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { apiService } from '../../services/api'
 import './index.scss'
@@ -150,7 +150,7 @@ export default class ProfilePage extends Component {
         this.showComingSoon('意见反馈')
         break
       case 'privacy':
-        this.showComingSoon('隐私政策')
+        Taro.navigateTo({ url: '/pages/privacy/index' })
         break
       case 'about':
         this.showAbout()
@@ -202,7 +202,7 @@ export default class ProfilePage extends Component {
   showAbout = () => {
     Taro.showModal({
       title: '关于我们',
-      content: '西安外国语大学小程序\n版本：1.0.0\n\n让学习更便捷',
+      content: '开发者：Leisure\n版本：1.0.0\n',
       showCancel: false
     })
   }
@@ -294,7 +294,7 @@ export default class ProfilePage extends Component {
         <View className="user-info-card">
           <View className="avatar-container">
             <View className="avatar-bg">
-              <Image className="avatar-img" src={avatarLogo} mode="aspectFill" />
+              <Image className="avatar-img" src={(Taro.getStorageSync('userInfo')||{}).avatarUrl || avatarLogo} mode="aspectFill" />
             </View>
           </View>
           <View className="user-details">
@@ -368,21 +368,49 @@ export default class ProfilePage extends Component {
           <Text className="section-title">应用反馈</Text>
           <View className="settings-card">
             {feedbackSettings.map((item, index) => (
-              <View 
-                key={index} 
-                className={`setting-item ${index !== feedbackSettings.length - 1 ? 'with-border' : ''}`}
-                onClick={() => this.onSettingClick(item.action)}
-              >
-                <View className="setting-left">
-                  <Image 
-                    className={`setting-icon ${item.color}`}
-                    src={this.renderIcon(item.icon, item.color)}
-                    mode="aspectFit"
-                  />
-                  <Text className="setting-title">{item.title}</Text>
+              item.action === 'contact' ? (
+                <View 
+                  key={index}
+                  className={`setting-item ${index !== feedbackSettings.length - 1 ? 'with-border' : ''}`}
+                  style={{ position: 'relative' }}
+                >
+                  <View className="setting-left">
+                    <Image 
+                      className={`setting-icon ${item.color}`}
+                      src={this.renderIcon(item.icon, item.color)}
+                      mode="aspectFit"
+                    />
+                    <Text className="setting-title">{item.title}</Text>
+                  </View>
+                  <Text className="setting-arrow">{'>'}</Text>
+                  {/* 透明覆盖按钮，不改变视觉样式 */}
+                  <Button
+                    openType='contact'
+                    hoverClass='none'
+                    style={'position:absolute;top:0;left:0;right:0;bottom:0;opacity:0;background:transparent;padding:0;margin:0;border:none;'}
+                    sessionFrom={JSON.stringify({ from: 'profile', userId: this.state.userInfo?.studentId || '', name: this.state.userInfo?.name || '' })}
+                  >
+                    {/* 占位，避免按钮内部空导致点击区域异常 */}
+                    <Text style={{ opacity: 0 }}>contact</Text>
+                  </Button>
                 </View>
-                <Text className="setting-arrow">{'>'}</Text>
-              </View>
+              ) : (
+                <View 
+                  key={index} 
+                  className={`setting-item ${index !== feedbackSettings.length - 1 ? 'with-border' : ''}`}
+                  onClick={() => this.onSettingClick(item.action)}
+                >
+                  <View className="setting-left">
+                    <Image 
+                      className={`setting-icon ${item.color}`}
+                      src={this.renderIcon(item.icon, item.color)}
+                      mode="aspectFit"
+                    />
+                    <Text className="setting-title">{item.title}</Text>
+                  </View>
+                  <Text className="setting-arrow">{'>'}</Text>
+                </View>
+              )
             ))}
           </View>
         </View>

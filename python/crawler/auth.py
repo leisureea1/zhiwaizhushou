@@ -440,10 +440,39 @@ def login_and_get_cookies(username: str, password: str, save_path: str | Path = 
         return result
         
     except AuthError as e:
+        # 尝试从底层异常中提取HTTP细节
+        detail: Dict[str, any] = {"type": type(e).__name__}
+        cause = getattr(e, "__cause__", None) or getattr(e, "__context__", None)
+        try:
+            import requests  # type: ignore
+            if isinstance(cause, requests.HTTPError):
+                resp = cause.response
+                if resp is not None:
+                    detail.update({
+                        "http_status": resp.status_code,
+                        "url": resp.url,
+                        "response_headers": dict(resp.headers),
+                        "response_text_snippet": resp.text[:800] if isinstance(resp.text, str) else str(resp.content)[:800],
+                    })
+                    req = resp.request
+                    if req is not None:
+                        detail.update({
+                            "request_method": getattr(req, 'method', ''),
+                            "request_url": getattr(req, 'url', ''),
+                            "request_headers": dict(getattr(req, 'headers', {})),
+                        })
+            elif isinstance(cause, requests.RequestException):
+                detail.update({
+                    "request_exception": str(cause),
+                })
+        except Exception:
+            pass
+
         return {
             "success": False,
             "error": str(e),
-            "message": "登录失败"
+            "message": "登录失败",
+            "error_detail": detail,
         }
     except Exception as e:
         return {

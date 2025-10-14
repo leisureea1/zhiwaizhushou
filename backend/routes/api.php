@@ -7,6 +7,10 @@ $router->add('POST', '/api/user/login', 'UserController@login');
 $router->add('POST', '/api/user/change-password', 'UserController@changePassword');
 $router->add('POST', '/api/user/get-detail', 'UserController@getUserDetail');
 $router->add('POST', '/api/user/verify-jwxt', 'UserController@verifyJwxtCredentials');
+$router->add('POST', '/api/user/get-jwxt-userinfo', 'UserController@getJwxtUserInfo');
+$router->add('POST', '/api/user/validate-credentials', 'UserController@validateUserCredentials');
+$router->add('POST', '/api/user/reset-password', 'UserController@resetPassword');
+$router->add('POST', '/api/user/update-avatar', 'UserController@updateAvatar');
 
 // 管理员认证相关路由
 $router->add('POST', '/api/admin/login', 'AdminAuthController@login');
@@ -40,3 +44,25 @@ $router->add('GET', '/api/lost-found/list', 'LostFoundController@getList');
 $router->add('POST', '/api/lost-found/create', 'LostFoundController@create');
 $router->add('POST', '/api/lost-found/update', 'LostFoundController@update');
 $router->add('POST', '/api/lost-found/delete', 'LostFoundController@delete');
+
+// 管理员-跳蚤市场审核路由
+$router->add('POST', '/api/admin/flea-market/review', 'FleaMarketController@review');
+
+// 管理员-失物招领审核路由
+$router->add('POST', '/api/admin/lost-found/review', 'LostFoundController@review');
+
+// 管理员-用户管理路由
+$router->add('GET', '/api/admin/users/list', 'AdminUserController@getList');
+$router->add('POST', '/api/admin/users/update-role', 'AdminUserController@updateRole');
+$router->add('POST', '/api/admin/users/delete', 'AdminUserController@delete');
+
+// 管理员-系统日志路由
+$router->add('GET', '/api/admin/system-logs/list', 'SystemLogController@getList');
+$router->add('GET', '/api/admin/system-logs/action-types', 'SystemLogController@getActionTypes');
+$router->add('GET', '/api/admin/system-logs/stats', 'SystemLogController@getStats');
+
+// 管理员-通知管理路由
+$router->add('GET', '/api/admin/notifications/settings', 'NotificationController@getSettings');
+$router->add('POST', '/api/admin/notifications/settings', 'NotificationController@updateSettings');
+$router->add('POST', '/api/admin/notifications/test-bark', 'NotificationController@testBark');
+

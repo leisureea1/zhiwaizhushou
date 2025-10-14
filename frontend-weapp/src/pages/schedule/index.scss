@@ -202,7 +202,7 @@
   }
 
   /* 周日期选择栏 - 严格按照原始设计 */
-  .week-selector {
+    .week-selector {
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -210,7 +210,7 @@
     border-bottom: 1rpx solid #f3f4f6;
     padding: 0 16rpx;
     /* 为了与下方时间轴左侧的时间列(128rpx)对齐，增加左内边距，避免"周一"与时间列重叠 */
-    padding-left: 128rpx;
+      padding-left: 112rpx;
     box-sizing: border-box;
 
     .week-day {
@@ -293,151 +293,242 @@
       }
     }
 
-    .timeline-content {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      flex: 1; /* 占满父容器剩余空间 */
-      min-height: 0; /* 避免子项撑开高度 */
+    /* Grid 课程表容器：1列为时间，2-8列为周一至周日，行数=12 个时间槽 */
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: 112rpx repeat(7, 1fr);
+      grid-template-rows: repeat(12, 1fr);
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+      padding-right: 24rpx; /* 与头部对齐的右内边距 */
+      box-sizing: border-box;
 
-      .time-slot {
+      /* 时间列单元格 */
+      .grid-time {
         display: flex;
-        flex: 1; /* 每个时间槽平分剩余空间 */
-        min-height: 0; /* 防止flex子元素高度溢出 */
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         border-bottom: 1rpx solid #f3f4f6;
+        padding: 8rpx 4rpx;
 
-        &:last-child {
-          border-bottom: none;
-        }
+        .period {
+          font-size: 24rpx;
+          margin-bottom: 6rpx;
+          color: #6b7280;
 
-        /* 左侧节次和时间 */
-        .time-info {
-          width: 128rpx;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-          padding-top: 8rpx;
-          padding: 0 8rpx;
-          flex-shrink: 0;
-
-          .period {
-            font-size: 24rpx;
-            margin-bottom: 8rpx;
-            color: #6b7280;
-
-            &.break-period {
-              color: #f97316;
-            }
-          }
-
-          .time-text {
-            color: #9ca3af;
-            font-size: 18rpx;
-            text-align: center;
-            line-height: 1;
+          &.break-period {
+            color: #f97316;
           }
         }
 
-        /* 右侧主要课程区域 */
-        .course-area {
-          flex: 1;
-          padding-top: 8rpx;
-          padding-right: 24rpx;
-          min-height: 0;
+        .time-text {
+          color: #9ca3af;
+          font-size: 18rpx;
+          line-height: 1;
+        }
+      }
 
-          .break-indicator {
-            width: 100%;
-            height: 48rpx;
-            background: #fff7ed;
-            border-radius: 8rpx;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-top: 8rpx;
+      /* 背景网格单元格 */
+      .grid-cell {
+        border-left: 1rpx solid #f5f6f7;
+        border-bottom: 1rpx solid #f3f4f6;
+        &:nth-child(8n) { border-right: 1rpx solid #f5f6f7; }
+      }
 
-            .break-text {
-              color: #f97316;
-              font-size: 20rpx;
-            }
-          }
+      /* 午休/晚休行 */
+      .grid-break {
+        grid-column: 2 / 9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-left: 1rpx solid #f5f6f7;
+        border-right: 1rpx solid #f5f6f7;
+        border-bottom: 1rpx solid #f3f4f6;
+        background: #fff7ed;
+        border-radius: 8rpx;
 
-          .course-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0;
-            height: 100%;
-            
-            .grid-cell {
-              border-left: 1rpx solid #f5f6f7;
-              &:last-child { border-right: 1rpx solid #f5f6f7; }
-            }
-          }
+        .break-text {
+          color: #f97316;
+          font-size: 20rpx;
+        }
+      }
+
+      /* 课程卡片（Grid 放置，跨行） */
+      .course-card {
+        margin: 4rpx;
+        padding: 10rpx 12rpx;
+        border-radius: 18rpx;
+        box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.06);
+        border: 1rpx solid rgba(0,0,0,0.04);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        overflow: hidden;
+        backdrop-filter: saturate(120%);
+
+        .course-name {
+          color: inherit;
+          font-size: 16rpx;
+          font-weight: 600;
+          margin-bottom: 2rpx;
+          line-height: 1.22;
+          white-space: normal;
+          word-break: break-all;
+          width: 4em;
+          /* 多方向极轻描边，提升浅色底（如黄色）上的清晰度 */
+          text-shadow:
+            0 1px 0 rgba(0, 0, 0, 0.16),
+            0 -1px 0 rgba(0, 0, 0, 0.06),
+            1px 0 0 rgba(0, 0, 0, 0.08),
+            -1px 0 0 rgba(0, 0, 0, 0.08);
+        }
+        .course-teacher, .course-location {
+          color: inherit;
+          font-size: 14rpx;
+          margin-bottom: 2rpx;
+          white-space: normal;
+          word-break: break-all;
+          width: 4em;
+          /* 多方向极轻描边（与标题一致） */
+          text-shadow:
+            0 1px 0 rgba(0, 0, 0, 0.16),
+            0 -1px 0 rgba(0, 0, 0, 0.06),
+            1px 0 0 rgba(0, 0, 0, 0.08),
+            -1px 0 0 rgba(0, 0, 0, 0.08);
         }
       }
     }
   }
-}
 
-/* 课程卡片绝对定位层，契合网格且垂直渲染 */
-.schedule-page {
-  .schedule-wrapper {
-    position: relative;
-    height: 100%;
+  /* 侧边栏遮罩与容器 */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 2000;
+    display: flex;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+  .sidebar {
+    width: 560rpx;
+    max-width: 80vw;
+    height: 100vh;
+    background: #ffffff;
+    box-shadow: 8rpx 0 24rpx rgba(0,0,0,0.12);
     display: flex;
     flex-direction: column;
   }
-  .courses-layer {
+  .sidebar-status-bar {
+    height: 88rpx; /* 与主页面状态栏占位高度一致 */
+    background: #ffffff;
+    flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 28rpx 24rpx;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1rpx solid #f3f4f6;
+  }
+  .sidebar-title { font-size: 32rpx; color: #111827; font-weight: 600; }
+  .sidebar-close { width: 48rpx; height: 48rpx; display: flex; align-items: center; justify-content: center; color: #6b7280; }
+
+  .sidebar-item {
+    padding: 28rpx 24rpx;
+    font-size: 28rpx;
+    color: #1f2937;
+    border-bottom: 1rpx solid #f3f4f6;
+  }
+  .sidebar-item:active { background: #f9fafb; }
+
+  /* 分享预览弹窗 */
+  .share-preview-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48rpx;
+  }
+
+  .share-preview-card {
+    background: white;
+    border-radius: 24rpx;
+    width: 100%;
+    max-width: 600rpx;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    padding: 32rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 24rpx 48rpx rgba(0, 0, 0, 0.2);
+  }
+
+  .share-preview-close {
     position: absolute;
-    top: 0;
-    left: 128rpx; /* 与左侧time-info宽度对齐 */
-    right: 24rpx; /* 与course-area padding-right 对齐 */
-    bottom: 0;
-    pointer-events: none; /* 不阻塞滚动 */
+    top: 16rpx;
+    right: 16rpx;
+    width: 48rpx;
+    height: 48rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 32rpx;
+    z-index: 1;
+  }
 
-    .floating-course-card {
-      position: absolute;
-      padding: 6rpx 8rpx;
-      margin: 4rpx; /* 精细留白 */
-      box-sizing: border-box;
-      pointer-events: auto;
-      border-radius: 20rpx; /* 更柔和圆角 */
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      overflow: hidden;
-      font-size: 22rpx;
-      line-height: 1.15;
-      backdrop-filter: saturate(120%);
-      box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.06);
-      border: 1rpx solid rgba(0,0,0,0.04); /* 轻边框提升对比度 */
+  .share-preview-image {
+    width: 100%;
+    border-radius: 12rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.1);
+  }
 
-      /* 文本颜色与层级（按用户要求） */
-      .course-name {
-        color: #333333;
-        font-size: 16rpx; /* 保证单行至少4个字 */
-        font-weight: 700;
-        margin-bottom: 2rpx;
-        line-height: 1.15;
-        white-space: normal; /* 允许多行换行 */
-        word-break: break-all; /* 汉字逐字换行，更紧凑 */
-      }
-      .course-location {
-        color: #666666;
-        font-size: 16rpx;
-        margin-bottom: 2rpx;
-        white-space: normal; /* 多行换行 */
-        word-break: break-word;
-      }
-      .course-teacher {
-        color: #999999;
-        font-size: 16rpx;
-        white-space: normal; /* 多行换行 */
-        word-break: break-word;
-      }
+  .share-preview-tips {
+    width: 100%;
+    padding: 16rpx 20rpx;
+    background: #fff7ed;
+    border-radius: 12rpx;
+    margin-bottom: 24rpx;
+
+    .share-preview-tips-text {
+      font-size: 24rpx;
+      color: #f97316;
+      line-height: 1.5;
+      text-align: center;
+    }
+  }
+
+  .share-preview-button {
+    width: 100%;
+    height: 88rpx;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    font-size: 28rpx;
+    font-weight: 600;
+    border-radius: 44rpx;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8rpx 16rpx rgba(59, 130, 246, 0.3);
+    transition: all 0.3s ease;
+
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: 0 4rpx 8rpx rgba(59, 130, 246, 0.3);
     }
   }
 }
+
 
 /* 响应式调整 */
 @media (max-width: 375px) {

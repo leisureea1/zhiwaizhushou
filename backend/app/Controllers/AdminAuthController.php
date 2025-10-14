@@ -19,26 +19,26 @@ class AdminAuthController {
         }
         
         // 验证必填字段
-        if (empty($input['student_id']) || empty($input['password'])) {
+        if (empty($input['username']) || empty($input['password'])) {
             http_response_code(400);
-            echo json_encode(['error' => '学号和密码不能为空']);
+            echo json_encode(['error' => '用户名和密码不能为空']);
             return;
         }
         
         try {
             // 查找用户
-            $user = User::findByStudentId($input['student_id']);
+            $user = User::findByUsername($input['username']);
             
             if (!$user) {
                 http_response_code(401);
-                echo json_encode(['error' => '学号或密码错误']);
+                echo json_encode(['error' => '用户名或密码错误']);
                 return;
             }
             
             // 验证密码
             if (!password_verify($input['password'], $user['password_hash'])) {
                 http_response_code(401);
-                echo json_encode(['error' => '学号或密码错误']);
+                echo json_encode(['error' => '用户名或密码错误']);
                 SystemLog::log($user['uid'], 'admin_login_failed', '管理员登录密码错误');
                 return;
             }
@@ -54,14 +54,31 @@ class AdminAuthController {
             // 生成访问令牌（简化实现，实际应使用JWT等）
             $token = bin2hex(random_bytes(32));
             
+            // 获取客户端IP地址
+            $loginIp = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            if (strpos($loginIp, ',') !== false) {
+                $loginIp = explode(',', $loginIp)[0];
+            }
+            $loginIp = trim($loginIp);
+            
+            // 更新登录信息
+            User::updateLoginInfo($user['uid'], $loginIp);
+            
+            // 设置 session
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['admin_user_id'] = $user['uid'];
+            $_SESSION['admin_username'] = $user['username'];
+            
             // 记录日志
-            SystemLog::log($user['uid'], 'admin_login', '管理员登录成功');
+            SystemLog::log($user['uid'], 'admin_login', '管理员登录成功，IP: ' . $loginIp);
             
             // 返回成功响应
             echo json_encode([
                 'message' => '登录成功',
                 'user_id' => $user['uid'],
-                'student_id' => $user['student_id'],
+                'username' => $user['username'],
                 'name' => $user['name'],
                 'role' => $user['role'],
                 'token' => $token
@@ -77,6 +94,13 @@ class AdminAuthController {
      * 管理员登出
      */
     public function logout() {
+        // 清除 session
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        unset($_SESSION['admin_user_id']);
+        unset($_SESSION['admin_username']);
+        
         // 在实际应用中，应该从数据库或缓存中删除令牌
         // 这里简化处理，直接返回成功消息
         echo json_encode(['message' => '登出成功']);

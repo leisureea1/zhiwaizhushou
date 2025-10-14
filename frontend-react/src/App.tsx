@@ -1,14 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LoginPage } from './components/LoginPage';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { UserManagement } from './components/UserManagement';
 import { AnnouncementManagement } from './components/AnnouncementManagement';
+import { FleaMarketManagement } from './components/FleaMarketManagement';
+import LostFoundManagement from './components/LostFoundManagement';
+import { SystemManagement } from './components/SystemManagement';
+import { NotificationManagement } from './components/NotificationManagement';
 import ApiService from './services/api';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // 从 localStorage 初始化登录状态
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const adminToken = localStorage.getItem('adminToken');
+    const adminUser = localStorage.getItem('adminUser');
+    return !!(adminToken && adminUser);
+  });
   const [currentPage, setCurrentPage] = useState('dashboard');
+
+  // 监听登录状态变化
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      const adminToken = localStorage.getItem('adminToken');
+      const adminUser = localStorage.getItem('adminUser');
+      const isValid = !!(adminToken && adminUser);
+      
+      if (isValid !== isLoggedIn) {
+        setIsLoggedIn(isValid);
+      }
+    };
+
+    // 立即检查一次
+    checkLoginStatus();
+
+    // 监听 storage 事件（跨标签页同步）
+    window.addEventListener('storage', checkLoginStatus);
+    
+    return () => {
+      window.removeEventListener('storage', checkLoginStatus);
+    };
+  }, [isLoggedIn]);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -20,6 +52,9 @@ export default function App() {
     } catch (error) {
       console.error('登出失败:', error);
     } finally {
+      // 清除 localStorage 中的登录信息
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
       setIsLoggedIn(false);
     }
   };
@@ -33,33 +68,15 @@ export default function App() {
       case 'announcements':
         return <AnnouncementManagement />;
       case 'marketplace':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold mb-4">二手市场管理</h2>
-            <p className="text-gray-600">此页面正在开发中...</p>
-          </div>
-        );
+        return <FleaMarketManagement />;
       case 'lostfound':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold mb-4">失物招领管理</h2>
-            <p className="text-gray-600">此页面正在开发中...</p>
-          </div>
-        );
+        return <LostFoundManagement />;
       case 'system':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold mb-4">系统管理</h2>
-            <p className="text-gray-600">此页面正在开发中...</p>
-          </div>
-        );
+        return <SystemManagement />;
+      case 'notifications':
+        return <NotificationManagement />;
       case 'api':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold mb-4">API 测试</h2>
-            <p className="text-gray-600">此页面正在开发中...</p>
-          </div>
-        );
+        return <NotificationManagement />;
       default:
         return <Dashboard />;
     }

@@ -1,3 +1,6 @@
 export default {
-  navigationBarTitleText: '失物招领'
+  navigationStyle: 'custom',
+  enablePullDownRefresh: false,
+  backgroundTextStyle: 'dark'
 }
+

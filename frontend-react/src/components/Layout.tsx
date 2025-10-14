@@ -40,7 +40,7 @@ const menuItems = [
   { id: 'marketplace', label: '二手市场', icon: ShoppingBag },
   { id: 'lostfound', label: '失物招领', icon: Package },
   { id: 'system', label: '系统管理', icon: Settings },
-  { id: 'api', label: 'API 测试', icon: TestTube },
+  { id: 'api', label: '通知管理', icon: Bell },
 ];
 
 export function Layout({ children, currentPage, onPageChange, onLogout }: LayoutProps) {

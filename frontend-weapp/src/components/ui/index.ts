@@ -5,4 +5,7 @@ export { Button } from './Button'
 export { SearchBar } from './SearchBar'
 export { Tabs, TabsList, TabsTrigger } from './Tabs'
 export { ImageWithFallback } from './ImageWithFallback'
+export { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './Dialog'
+export { Textarea } from './Textarea'
+export { Avatar, AvatarFallback } from './Avatar'
 

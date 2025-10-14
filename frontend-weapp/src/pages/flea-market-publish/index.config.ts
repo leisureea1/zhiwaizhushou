@@ -1,3 +1,4 @@
 export default {
-  navigationBarTitleText: '发布商品'
+  navigationStyle: 'custom'
 }
+

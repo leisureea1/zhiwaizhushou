@@ -358,7 +358,7 @@ def main():
     
     if args.action in ["all", "course"]:
         print("获取课程表...")
-        course_table = api.get_course_table(simple=args.simple)
+        course_table = api.get_course_table()
         result["course_table"] = course_table
         if course_table.get("success"):
             print(f"课程数量: {course_table.get('total_courses')}")
