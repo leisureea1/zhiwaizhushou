@@ -30,6 +30,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             name: result.name,
             role: result.role
           }));
+          // 设置登录状态标记
+          localStorage.setItem('isLoggedIn', 'true');
           onLogin();
         } else {
           alert('登录失败：' + result.error);

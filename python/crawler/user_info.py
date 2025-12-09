@@ -256,7 +256,33 @@ def get_user_info(session: requests.Session) -> Dict:
             if match:
                 user_info["student_id"] = match.group(1)
         
-        # 备用方法2: 从个人信息页面获取
+        # 备用方法2: 从课程表首页 index.action 兜底解析 ids
+        if not user_info["student_id"]:
+            try:
+                idx_resp = session.get(
+                    "https://jwxt.xisu.edu.cn/eams/courseTableForStd!index.action",
+                    timeout=15
+                )
+                idx_resp.raise_for_status()
+                html = idx_resp.text
+                patterns = [
+                    r'name\s*=\s*"ids"\s+value\s*=\s*"(\d+)",?',
+                    r'<input[^>]*name\s*=\s*"ids"[^>]*value\s*=\s*"(\d+)"',
+                    r'<option[^>]*value\s*=\s*"(\d+)"[^>]*selected',
+                    r'addInput\([^)]*"ids"[^)]*"(\d+)"\)',
+                    r'"ids"\s*:\s*"(\d+)"',
+                    r'ids\s*=\s*"(\d+)"',
+                    r'ids\s*=\s*(\d+)',
+                ]
+                for pattern in patterns:
+                    m = re.search(pattern, html, re.IGNORECASE | re.DOTALL)
+                    if m:
+                        user_info["student_id"] = m.group(1)
+                        break
+            except Exception:
+                pass
+
+        # 备用方法3: 从个人信息页面获取
         if not user_info["student_id"]:
             resp = session.get("https://jwxt.xisu.edu.cn/eams/stdDetail.action", timeout=15)
             resp.raise_for_status()

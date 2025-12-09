@@ -197,8 +197,10 @@ class LostFoundController {
                 require_once dirname(__DIR__) . '/Services/NotificationService.php';
                 $user = User::findById($input['publisher_uid']);
                 $publisherName = $user['name'] ?? '未知用户';
-                $type = $input['type'] ?? 'lost';
-                NotificationService::notifyLostFoundItemCreated($itemId, $input['title'], $publisherName, $type);
+                $type = $input['type'] ?? ($input['status'] ?? 'lost');
+                // 失物招领使用 description 而不是 title
+                $description = $input['description'] ?? '无描述';
+                NotificationService::notifyLostFoundItemCreated($itemId, $description, $publisherName, $type);
             } catch (Exception $notifyError) {
                 // 通知失败不影响主流程
                 error_log('[LostFound] Failed to send notification: ' . $notifyError->getMessage());

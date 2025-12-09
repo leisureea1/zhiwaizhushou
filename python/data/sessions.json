@@ -1,0 +1,13 @@
+{
+  "a2378585cb00a857f11466e0ef835d41": {
+    "username": "107242024000080",
+    "cookies": {
+      "JSESSIONID": "MOCK_SESSION_ID_12345",
+      "iPlanetDirectoryPro": "MOCK_TOKEN",
+      "route": "mock_server"
+    },
+    "created_at": 1762172318.3600965,
+    "last_used": 1762172318.3600965,
+    "hit_count": 0
+  }
+}

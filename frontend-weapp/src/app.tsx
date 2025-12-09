@@ -6,6 +6,34 @@ import './app.scss'
 
 class App extends Component<PropsWithChildren> {
   /**
+   * 加载功能配置
+   */
+  loadFeatureSettings = async () => {
+    try {
+      const response: any = await apiService.getFeatureSettings()
+      if (response.success && response.data) {
+        // 将功能配置存储到本地
+        Taro.setStorageSync('featureSettings', response.data)
+        console.log('功能配置已加载:', response.data)
+      } else {
+        // 后端返回了响应但没有数据，使用默认配置（全部禁用）
+        console.warn('后端未返回功能配置数据，默认禁用所有功能')
+        Taro.setStorageSync('featureSettings', {
+          flea_market: { enabled: false, message: '跳蚤市场功能已下线' },
+          lost_found: { enabled: false, message: '失物招领功能已下线' }
+        })
+      }
+    } catch (error) {
+      console.error('加载功能配置失败:', error)
+      // 网络错误或后端异常时，使用默认配置（全部禁用）
+      Taro.setStorageSync('featureSettings', {
+        flea_market: { enabled: false, message: '跳蚤市场功能已下线' },
+        lost_found: { enabled: false, message: '失物招领功能已下线' }
+      })
+    }
+  }
+
+  /**
    * 更新用户活跃状态
    */
   updateUserActivity = async () => {
@@ -25,6 +53,14 @@ class App extends Component<PropsWithChildren> {
   }
 
   componentDidMount() {
+    // 标注一次应用启动ID，用于控制“每次启动仅弹一次”
+    try {
+      Taro.setStorageSync('appLaunchId', Date.now())
+    } catch {}
+
+    // 应用启动时加载功能配置
+    this.loadFeatureSettings()
+    
     // 应用启动时，尝试使用上次账号无感登录（仅刷新token与本地信息，不跳转）
     try {
       const token = Taro.getStorageSync('userToken')

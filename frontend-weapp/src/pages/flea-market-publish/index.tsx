@@ -17,6 +17,8 @@ interface PublishState {
   statusBarHeight: number
   wechatQr?: string
   editId?: string
+  featureDisabled: boolean
+  offlineMessage: string
 }
 
 const CATEGORIES = [
@@ -51,7 +53,9 @@ export default class FleaMarketPublishPage extends Component<any, PublishState> 
     images: [],
     submitting: false,
     statusBarHeight: 44,
-    wechatQr: ''
+    wechatQr: '',
+    featureDisabled: false,
+    offlineMessage: ''
   }
 
   maxImages = 9
@@ -61,6 +65,8 @@ export default class FleaMarketPublishPage extends Component<any, PublishState> 
     const statusBarHeight = win?.statusBarHeight ? Number(win.statusBarHeight) : 44
     this.setState({ statusBarHeight })
 
+    if (!this.checkFeatureEnabled()) return
+
     // 检测是否编辑模式
     const pages = Taro.getCurrentPages()
     const current = pages[pages.length - 1] as any
@@ -69,6 +75,18 @@ export default class FleaMarketPublishPage extends Component<any, PublishState> 
       this.setState({ editId: String(editId) })
       this.loadDetail(String(editId))
     }
+  }
+
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    if (!featureSettings.flea_market || !featureSettings.flea_market.enabled) {
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.flea_market?.message || '跳蚤市场功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
   }
 
   // 根据后端详情回填表单
@@ -412,8 +430,25 @@ export default class FleaMarketPublishPage extends Component<any, PublishState> 
       location,
       contact,
       images,
-      submitting
+      submitting,
+      featureDisabled,
+      offlineMessage
     } = this.state
+
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View className="back-home-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
 
     const categoryIndex = CATEGORIES.findIndex(c => c.value === category)
     const conditionIndex = CONDITIONS.findIndex(c => c.value === condition)

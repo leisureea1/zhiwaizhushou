@@ -5,8 +5,24 @@ import { apiService } from '../../services/api'
 import './index.scss'
 
 export default class LostFoundMyListPage extends Component<any, any> {
-  state = { list: [], loading: false, page: 1, hasMore: true, statusBarHeight: 44 }
-  componentDidMount(){ const w=(Taro as any).getWindowInfo?.()||(Taro as any).getSystemInfoSync?.(); this.setState({ statusBarHeight: Number(w?.statusBarHeight||44)}) }
+  state = { list: [], loading: false, page: 1, hasMore: true, statusBarHeight: 44, featureDisabled: false, offlineMessage: '' }
+  componentDidMount(){ 
+    const w=(Taro as any).getWindowInfo?.()||(Taro as any).getSystemInfoSync?.()
+    this.setState({ statusBarHeight: Number(w?.statusBarHeight||44)})
+    if (!this.checkFeatureEnabled()) return
+  }
+  
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    if (!featureSettings.lost_found || !featureSettings.lost_found.enabled) {
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.lost_found?.message || '失物招领功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
+  }
   componentDidShow(){ this.load(true) }
   load = async (refresh=false) => {
     if(this.state.loading) return
@@ -33,7 +49,25 @@ export default class LostFoundMyListPage extends Component<any, any> {
     Taro.setStorageSync('refresh_lost_found', Date.now())
     this.load(true)
   }
-  render(){ const { list } = this.state; return (
+  render(){ 
+    const { list, featureDisabled, offlineMessage } = this.state
+    
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View className="back-home-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
+    
+    return (
     <View className='lf-mylist-page'>
       <View className='status-bar' style={{height:`${this.state.statusBarHeight}px`}} />
       <View className='nav' style={{paddingTop:`${this.state.statusBarHeight}px`}}>

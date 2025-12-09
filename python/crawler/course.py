@@ -5,8 +5,8 @@ import re
 from typing import Dict, List, Optional
 import requests
 
-from semester import get_semester_id
-from user_info import get_student_id
+from .semester import get_semester_id
+from .user_info import get_student_id
 
 
 class CourseError(Exception):

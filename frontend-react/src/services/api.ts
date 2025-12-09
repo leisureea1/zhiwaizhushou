@@ -1,11 +1,24 @@
 // API服务文件，用于处理前端与后端的对接
-const API_BASE_URL = 'http://localhost:8000'; // 后端API基础URL
+const API_BASE_URL = 'https://api.xisu.leisureea.cn'; // 后端API基础URL
 
 // API服务类
 class ApiService {
+  // 统一请求处理，拦截 401/403
+  private static async request(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const response = await fetch(input, init);
+    
+    // 检查是否未授权
+    if (response.status === 401 || response.status === 403) {
+      // 触发自定义事件，通知 App 组件登出
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+    }
+    
+    return response;
+  }
+
   // 用户相关API
   static async userLogin(username: string, password: string) {
-    const response = await fetch(`${API_BASE_URL}/api/user/login`, {
+    const response = await this.request(`${API_BASE_URL}/api/user/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -16,7 +29,7 @@ class ApiService {
   }
 
   static async userRegister(userData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/user/register`, {
+    const response = await this.request(`${API_BASE_URL}/api/user/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -28,7 +41,7 @@ class ApiService {
 
   // 管理员认证相关API
   static async adminLogin(username: string, password: string) {
-    const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -41,7 +54,7 @@ class ApiService {
 
   // 管理员登出
   static async adminLogout() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/logout`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -51,23 +64,46 @@ class ApiService {
     return response.json();
   }
 
+  // 验证管理员 session 是否有效
+  static async validateAdminSession() {
+    try {
+      // 这里保持使用 fetch，避免触发全局未授权事件（虽然触发也没关系，但保持纯净）
+      const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/stats`, {
+        credentials: 'include',
+      });
+      // 如果返回 401 或 403，说明 session 无效
+      if (response.status === 401 || response.status === 403) {
+        return { valid: false };
+      }
+      const data = await response.json();
+      // 如果返回了错误信息，也认为无效
+      if (data.error && (data.error.includes('未登录') || data.error.includes('权限'))) {
+        return { valid: false };
+      }
+      return { valid: true };
+    } catch (error) {
+      console.error('验证 session 失败:', error);
+      return { valid: false };
+    }
+  }
+
   // 管理员仪表板相关API
   static async getDashboardStats() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/stats`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/dashboard/stats`, {
       credentials: 'include',
     });
     return response.json();
   }
 
   static async getRecentAnnouncements() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/recent-announcements`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/dashboard/recent-announcements`, {
       credentials: 'include',
     });
     return response.json();
   }
 
   static async getPendingItems() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/dashboard/pending-items`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/dashboard/pending-items`, {
       credentials: 'include',
     });
     return response.json();
@@ -75,12 +111,12 @@ class ApiService {
 
   // 课程相关API
   static async getCourseSchedule(userId: string) {
-    const response = await fetch(`${API_BASE_URL}/api/course/schedule?user_id=${userId}`);
+    const response = await this.request(`${API_BASE_URL}/api/course/schedule?user_id=${userId}`);
     return response.json();
   }
 
   static async getCourseGrades(userId: string) {
-    const response = await fetch(`${API_BASE_URL}/api/course/grades?user_id=${userId}`);
+    const response = await this.request(`${API_BASE_URL}/api/course/grades?user_id=${userId}`);
     return response.json();
   }
 
@@ -104,17 +140,17 @@ class ApiService {
 
   // 公告相关API
   static async getAnnouncementList() {
-    const response = await fetch(`${API_BASE_URL}/api/announcement/list`);
+    const response = await this.request(`${API_BASE_URL}/api/announcement/list`);
     return response.json();
   }
 
   static async getAnnouncementDetail(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/announcement/detail?id=${id}`);
+    const response = await this.request(`${API_BASE_URL}/api/announcement/detail?id=${id}`);
     return response.json();
   }
 
   static async createAnnouncement(announcementData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/announcement/create`, {
+    const response = await this.request(`${API_BASE_URL}/api/announcement/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -138,7 +174,7 @@ class ApiService {
       ? `${API_BASE_URL}/api/upload/image?public=1`
       : `${API_BASE_URL}/api/upload/image`;
     
-    const response = await fetch(url, {
+    const response = await this.request(url, {
       method: 'POST',
       body: formData,
     });
@@ -151,7 +187,7 @@ class ApiService {
   }
 
   static async updateAnnouncement(id: string, announcementData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/announcement/update`, {
+    const response = await this.request(`${API_BASE_URL}/api/announcement/update`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -167,7 +203,7 @@ class ApiService {
   }
 
   static async deleteAnnouncement(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/announcement/delete`, {
+    const response = await this.request(`${API_BASE_URL}/api/announcement/delete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -195,14 +231,14 @@ class ApiService {
       queryParts.push(`limit=${params.limit}`);
     }
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const response = await fetch(`${API_BASE_URL}/api/flea-market/list${queryString}`, {
+    const response = await this.request(`${API_BASE_URL}/api/flea-market/list${queryString}`, {
       credentials: 'include',
     });
     return response.json();
   }
 
   static async createFleaMarketItem(itemData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/flea-market/create`, {
+    const response = await this.request(`${API_BASE_URL}/api/flea-market/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -214,7 +250,7 @@ class ApiService {
   }
 
   static async updateFleaMarketItem(itemData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/flea-market/update`, {
+    const response = await this.request(`${API_BASE_URL}/api/flea-market/update`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -226,7 +262,7 @@ class ApiService {
   }
 
   static async deleteFleaMarketItem(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/flea-market/delete`, {
+    const response = await this.request(`${API_BASE_URL}/api/flea-market/delete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -243,7 +279,7 @@ class ApiService {
 
   // 审核通过跳蚤市场商品
   static async approveFleaMarketItem(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/flea-market/approve?id=${id}`, {
+    const response = await this.request(`${API_BASE_URL}/api/flea-market/approve?id=${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -260,7 +296,7 @@ class ApiService {
 
   // 拒绝跳蚤市场商品
   static async rejectFleaMarketItem(id: string, reason: string) {
-    const response = await fetch(`${API_BASE_URL}/api/flea-market/approve?id=${id}`, {
+    const response = await this.request(`${API_BASE_URL}/api/flea-market/approve?id=${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -288,14 +324,14 @@ class ApiService {
       queryParts.push(`limit=${params.limit}`);
     }
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const response = await fetch(`${API_BASE_URL}/api/lost-found${queryString}`, {
+    const response = await this.request(`${API_BASE_URL}/api/lost-found${queryString}`, {
       credentials: 'include',
     });
     return response.json();
   }
 
   static async createLostFoundItem(itemData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/lost-found/create`, {
+    const response = await this.request(`${API_BASE_URL}/api/lost-found/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -307,7 +343,7 @@ class ApiService {
   }
 
   static async updateLostFoundItem(itemData: any) {
-    const response = await fetch(`${API_BASE_URL}/api/lost-found/update`, {
+    const response = await this.request(`${API_BASE_URL}/api/lost-found/update`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -319,7 +355,7 @@ class ApiService {
   }
 
   static async deleteLostFoundItem(id: string) {
-    const response = await fetch(`${API_BASE_URL}/api/admin/lost-found/delete?id=${id}`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/lost-found/delete?id=${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -345,7 +381,8 @@ class ApiService {
         content: announcement.content,
         author: announcement.author_name || announcement.author || '未知',
         publishDate: announcement.created_at ? announcement.created_at.split(' ')[0] : '',
-        images: announcement.images ? JSON.parse(announcement.images) : []
+        images: announcement.images ? JSON.parse(announcement.images) : [],
+        isPinned: !!(announcement.is_pinned)
       }));
     } catch (error) {
       console.error('获取公告列表失败:', error);
@@ -355,7 +392,7 @@ class ApiService {
 
   // 用户管理相关API - 后端暂未实现，使用模拟数据
   static async getUserList() {
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/list`, {
+    const res = await this.request(`${API_BASE_URL}/api/admin/users/list`, {
       credentials: 'include',
     });
     return res.json();
@@ -368,7 +405,7 @@ class ApiService {
       email: userData.email,
       role: userData.role === 'student' ? 'user' : userData.role,
     };
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/create`, {
+    const res = await this.request(`${API_BASE_URL}/api/admin/users/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -379,7 +416,7 @@ class ApiService {
 
   static async updateUserRole(userId: string, role: string) {
     const payload = { user_id: Number(userId), role: role === '学生' ? 'user' : role };
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/update-role`, {
+    const res = await this.request(`${API_BASE_URL}/api/admin/users/update-role`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -389,7 +426,7 @@ class ApiService {
   }
 
   static async deleteUser(userId: string) {
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/delete`, {
+    const res = await this.request(`${API_BASE_URL}/api/admin/users/delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // 携带 cookie，使后端能读取 session
@@ -404,7 +441,7 @@ class ApiService {
 
   // 获取用户详情（包含教务系统密码）
   static async getUserDetail(userId: string) {
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/detail?user_id=${userId}`, {
+    const res = await this.request(`${API_BASE_URL}/api/admin/users/detail?user_id=${userId}`, {
       method: 'GET',
       credentials: 'include',
     });
@@ -426,7 +463,7 @@ class ApiService {
       password: userData.password || undefined, // 小程序登录密码
       role: userData.role,
     };
-    const res = await fetch(`${API_BASE_URL}/api/admin/users/update`, {
+    const res = await this.request(`${API_BASE_URL}/api/admin/users/update`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -470,21 +507,21 @@ class ApiService {
     if (params?.end_date) queryParts.push(`end_date=${params.end_date}`);
     
     const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
-    const response = await fetch(`${API_BASE_URL}/api/admin/system-logs/list${queryString}`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/system-logs/list${queryString}`, {
       credentials: 'include',
     });
     return response.json();
   }
 
   static async getSystemLogStats() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/system-logs/stats`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/system-logs/stats`, {
       credentials: 'include',
     });
     return response.json();
   }
 
   static async getSystemLogActionTypes() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/system-logs/action-types`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/system-logs/action-types`, {
       credentials: 'include',
     });
     return response.json();
@@ -492,14 +529,14 @@ class ApiService {
 
   // 通知管理相关API
   static async getNotificationSettings() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/notifications/settings`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/notifications/settings`, {
       credentials: 'include',
     });
     return response.json();
   }
 
   static async updateNotificationSettings(data: { settings: Record<string, string> }) {
-    const response = await fetch(`${API_BASE_URL}/api/admin/notifications/settings`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/notifications/settings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -511,7 +548,7 @@ class ApiService {
   }
 
   static async testBarkNotification() {
-    const response = await fetch(`${API_BASE_URL}/api/admin/notifications/test-bark`, {
+    const response = await this.request(`${API_BASE_URL}/api/admin/notifications/test-bark`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -519,6 +556,58 @@ class ApiService {
       credentials: 'include',
     });
     return response.json();
+  }
+
+  // 功能开关管理相关API
+  static async getFeatureList() {
+    const response = await this.request(`${API_BASE_URL}/api/admin/features/list`, {
+      credentials: 'include',
+    });
+    return response.json();
+  }
+
+  static async toggleFeature(featureKey: string, isEnabled: boolean) {
+    const response = await this.request(`${API_BASE_URL}/api/admin/features/toggle`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        feature_key: featureKey,
+        is_enabled: isEnabled ? 1 : 0
+      }),
+    });
+    return response.json();
+  }
+
+  static async updateFeature(id: number, data: { offline_message?: string; is_enabled?: number }) {
+    const response = await this.request(`${API_BASE_URL}/api/admin/features/update`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ id, ...data }),
+    });
+    return response.json();
+  }
+
+  // 设置公告置顶状态（管理员）
+  static async setAnnouncementPinned(id: string, isPinned: boolean) {
+    const response = await this.request(`${API_BASE_URL}/api/announcement/set-pinned`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ id, is_pinned: isPinned ? 1 : 0 }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || '设置置顶状态失败');
+    }
+    return data;
   }
 }
 

@@ -5,7 +5,7 @@ import './index.scss'
 import { apiService } from '../../services/api'
 import AppIcon, { AppIconName } from '../../components/AppIcon/index'
 
-type AppItem = { name: string; action: AppIconName; color: string }
+type AppItem = { name: string; action: AppIconName; color: string; disabled?: boolean }
 
 interface IndexState {
   apps: AppItem[]
@@ -43,6 +43,44 @@ export default class IndexPage extends Component<any, IndexState> {
   componentDidMount() {
     // 页面加载时的逻辑
     this.loadAnnouncements(1)
+    // 根据功能配置更新应用列表
+    this.updateAppsStatus()
+  }
+
+  // 根据功能配置更新应用状态
+  updateAppsStatus = () => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    const updatedApps = this.state.apps.map(app => {
+      // 检查跳蚤市场
+      if (app.action === 'market') {
+        if (!featureSettings.flea_market || !featureSettings.flea_market.enabled) {
+          return { ...app, name: '敬请期待', disabled: true }
+        }
+      }
+      // 检查失物招领
+      if (app.action === 'lost') {
+        if (!featureSettings.lost_found || !featureSettings.lost_found.enabled) {
+          return { ...app, name: '敬请期待', disabled: true }
+        }
+      }
+      return app
+    })
+    this.setState({ apps: updatedApps })
+  }
+
+  // 分享配置
+  onShareAppMessage() {
+    return {
+      title: '知外助手 - 校园生活服务平台',
+      path: '/pages/index/index'
+    }
+  }
+
+  // 分享到朋友圈配置
+  onShareTimeline() {
+    return {
+      title: '知外助手 - 校园生活服务平台'
+    }
   }
 
   stripHtml = (html: string): string => {
@@ -66,6 +104,19 @@ export default class IndexPage extends Component<any, IndexState> {
 
   /** @param {any} app */
   onAppClick = (app: AppItem) => {
+    // 如果应用被禁用，显示提示并返回
+    if (app.disabled) {
+      Taro.showToast({
+        title: '该功能暂未开放',
+        icon: 'none',
+        duration: 2000
+      })
+      return
+    }
+    
+    // 检查功能开关（双重保险）
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    
     switch (app.action) {
       case 'grades':
         Taro.navigateTo({
@@ -81,11 +132,31 @@ export default class IndexPage extends Component<any, IndexState> {
         })
         break
       case 'market':
+        // 检查跳蚤市场功能是否开启
+        // 如果配置不存在或明确禁用，则阻止访问
+        if (!featureSettings.flea_market || !featureSettings.flea_market.enabled) {
+          Taro.showToast({
+            title: featureSettings.flea_market?.message || '跳蚤市场功能暂时关闭，请稍后再试',
+            icon: 'none',
+            duration: 2000
+          })
+          return
+        }
         Taro.navigateTo({
           url: '/pages/flea-market/index'
         })
         break
       case 'lost':
+        // 检查失物招领功能是否开启
+        // 如果配置不存在或明确禁用，则阻止访问
+        if (!featureSettings.lost_found || !featureSettings.lost_found.enabled) {
+          Taro.showToast({
+            title: featureSettings.lost_found?.message || '失物招领功能暂时关闭，请稍后再试',
+            icon: 'none',
+            duration: 2000
+          })
+          return
+        }
         Taro.navigateTo({
           url: '/pages/lost-found/index'
         })
@@ -246,9 +317,13 @@ export default class IndexPage extends Component<any, IndexState> {
           <View className="apps-card">
             <View className="apps-row">
               {topApps.map((app: AppItem, index: number) => (
-                <View key={index} className="app-item" onClick={() => this.onAppClick(app)}>
+                <View 
+                  key={index} 
+                  className={`app-item ${app.disabled ? 'app-item-disabled' : ''}`}
+                  onClick={() => this.onAppClick(app)}
+                >
                   <View className="app-icon">
-                    <AppIcon name={app.action} color={app.color} />
+                    <AppIcon name={app.action} color={app.disabled ? '#d1d5db' : app.color} />
                   </View>
                   <Text className="app-name">{app.name}</Text>
                 </View>
@@ -256,9 +331,13 @@ export default class IndexPage extends Component<any, IndexState> {
             </View>
             <View className="apps-row">
               {bottomApps.map((app: AppItem, index: number) => (
-                <View key={index} className="app-item" onClick={() => this.onAppClick(app)}>
+                <View 
+                  key={index} 
+                  className={`app-item ${app.disabled ? 'app-item-disabled' : ''}`}
+                  onClick={() => this.onAppClick(app)}
+                >
                   <View className="app-icon">
-                    <AppIcon name={app.action} color={app.color} />
+                    <AppIcon name={app.action} color={app.disabled ? '#d1d5db' : app.color} />
                   </View>
                   <Text className="app-name">{app.name}</Text>
                 </View>

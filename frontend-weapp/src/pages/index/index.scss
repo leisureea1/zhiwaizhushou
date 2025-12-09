@@ -156,6 +156,20 @@
           color: #374151;
           text-align: center;
         }
+
+        // 禁用状态样式
+        &.app-item-disabled {
+          opacity: 0.5;
+          
+          .app-icon {
+            background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%);
+            border-color: #d1d5db;
+          }
+
+          .app-name {
+            color: #9ca3af;
+          }
+        }
       }
     }
 

@@ -32,6 +32,8 @@ interface DetailState {
   currentImageIndex: number
   statusBarHeight: number
   showContactModal: boolean
+  featureDisabled: boolean
+  offlineMessage: string
 }
 
 export default class LostFoundDetailPage extends Component<any, DetailState> {
@@ -40,14 +42,30 @@ export default class LostFoundDetailPage extends Component<any, DetailState> {
     loading: true,
     currentImageIndex: 0,
     statusBarHeight: 44,
-    showContactModal: false
+    showContactModal: false,
+    featureDisabled: false,
+    offlineMessage: ''
   }
 
   componentDidMount() {
     const win = Taro.getWindowInfo ? Taro.getWindowInfo() : (Taro as any).getSystemInfoSync?.()
     const statusBarHeight = win?.statusBarHeight ? Number(win.statusBarHeight) : 44
     this.setState({ statusBarHeight })
+    
+    if (!this.checkFeatureEnabled()) return
     this.loadItemDetail()
+  }
+
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    if (!featureSettings.lost_found || !featureSettings.lost_found.enabled) {
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.lost_found?.message || '失物招领功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
   }
 
   loadItemDetail = async () => {
@@ -121,7 +139,22 @@ export default class LostFoundDetailPage extends Component<any, DetailState> {
   }
 
   render() {
-    const { item, loading, currentImageIndex } = this.state
+    const { item, loading, currentImageIndex, featureDisabled, offlineMessage } = this.state
+
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View className="back-home-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
 
     if (loading) {
       return (

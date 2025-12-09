@@ -2,7 +2,7 @@
 // 数据库配置文件
 
 class DatabaseConfig {
-    // 数据库连接配置
+    // 默认数据库连接配置（可被环境变量覆盖）
     const DB_HOST = 'localhost';
     const DB_PORT = 3306;
     const DB_NAME = 'xisuerr';
@@ -11,14 +11,21 @@ class DatabaseConfig {
     
     private static $pdo = null;
     
+
     /**
      * 获取数据库连接
      */
     public static function getConnection() {
         if (self::$pdo === null) {
             try {
-                $dsn = 'mysql:host=' . self::DB_HOST . ';port=' . self::DB_PORT . ';dbname=' . self::DB_NAME . ';charset=utf8mb4';
-                self::$pdo = new PDO($dsn, self::DB_USER, self::DB_PASS, [
+                $host = self::env('DB_HOST', self::DB_HOST);
+                $port = (int)self::env('DB_PORT', (string)self::DB_PORT);
+                $name = self::env('DB_NAME', self::DB_NAME);
+                $user = self::env('DB_USER', self::DB_USER);
+                $pass = self::env('DB_PASS', self::DB_PASS);
+
+                $dsn = 'mysql:host=' . $host . ';port=' . $port . ';dbname=' . $name . ';charset=utf8mb4';
+                self::$pdo = new PDO($dsn, $user, $pass, [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES => false,

@@ -14,7 +14,7 @@ class LostFound {
         if ($publisherUid) { $where[] = "lf.publisher_uid = ?"; $params[] = $publisherUid; }
         if ($category) { $where[] = "lf.category = ?"; $params[] = $category; }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
-        $sql = "SELECT lf.*, u.name as publisher_name, u.avatar_url as publisher_avatar FROM lost_found lf 
+        $sql = "SELECT lf.*, u.username as publisher_name, u.avatar_url as publisher_avatar FROM lost_found lf 
                 JOIN users u ON lf.publisher_uid = u.uid 
                 $whereSql 
                 ORDER BY lf.created_at DESC LIMIT ? OFFSET ?";
@@ -29,7 +29,7 @@ class LostFound {
      */
     public static function getById($id) {
         $stmt = DatabaseConfig::query(
-            "SELECT lf.*, u.name as publisher_name, u.avatar_url as publisher_avatar FROM lost_found lf 
+            "SELECT lf.*, u.username as publisher_name, u.avatar_url as publisher_avatar FROM lost_found lf 
              JOIN users u ON lf.publisher_uid = u.uid 
              WHERE lf.id = ?",
             [$id]

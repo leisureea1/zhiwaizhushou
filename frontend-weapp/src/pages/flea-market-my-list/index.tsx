@@ -5,12 +5,34 @@ import { apiService } from '../../services/api'
 import './index.scss'
 
 export default class MyListPage extends Component<any, any> {
-  state = { list: [], loading: false, page: 1, hasMore: true, statusBarHeight: 44 }
+  state = { 
+    list: [], 
+    loading: false, 
+    page: 1, 
+    hasMore: true, 
+    statusBarHeight: 44,
+    featureDisabled: false,
+    offlineMessage: ''
+  }
 
   componentDidMount() {
     const win = Taro.getWindowInfo ? Taro.getWindowInfo() : (Taro as any).getSystemInfoSync?.()
     const statusBarHeight = win?.statusBarHeight ? Number(win.statusBarHeight) : 44
     this.setState({ statusBarHeight })
+    
+    if (!this.checkFeatureEnabled()) return
+  }
+
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    if (!featureSettings.flea_market || !featureSettings.flea_market.enabled) {
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.flea_market?.message || '跳蚤市场功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
   }
 
   componentDidShow() { this.load(true) }
@@ -44,7 +66,23 @@ export default class MyListPage extends Component<any, any> {
   }
 
   render() {
-    const { list } = this.state
+    const { list, featureDisabled, offlineMessage } = this.state
+    
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View className="back-home-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
+    
     return (
       <View className='mylist-page'>
         <View className='status-bar' style={{ height: `${this.state.statusBarHeight}px` }} />

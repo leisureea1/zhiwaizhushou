@@ -39,6 +39,7 @@ const menuItems = [
   { id: 'announcements', label: '公告管理', icon: Megaphone },
   { id: 'marketplace', label: '二手市场', icon: ShoppingBag },
   { id: 'lostfound', label: '失物招领', icon: Package },
+  { id: 'features', label: '功能开关', icon: Settings },
   { id: 'system', label: '系统管理', icon: Settings },
   { id: 'api', label: '通知管理', icon: Bell },
 ];

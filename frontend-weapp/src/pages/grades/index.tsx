@@ -129,13 +129,32 @@ export default class GradesPage extends Component<{}, GradesState> {
 
     try {
       const response = await apiService.getSemesters(userInfo.userId) as any
+      
+      console.log('学期API原始响应:', response)
 
       if (response && response.data) {
-        // 检查是否有学期列表
-        const semestersList = (response.data.semesters || []).map((sem: any) => ({
-          id: sem.id,
-          name: sem.name || `学期${sem.id}`
+        // 处理嵌套的 data 结构
+        // response.data 可能本身就包含 data 字段
+        let actualData = response.data
+        
+        // 如果 response.data 有嵌套的 data 字段，使用嵌套的
+        if (actualData.data) {
+          actualData = actualData.data
+        }
+        
+        console.log('解析后的数据:', actualData)
+        
+        // 尝试多种可能的学期列表字段
+        const semestersList = (
+          actualData.all_semesters || 
+          actualData.semesters || 
+          []
+        ).map((sem: any) => ({
+          id: String(sem.id), // 确保 id 是字符串
+          name: sem.display_name || sem.name || `学期${sem.id}`
         }))
+
+        console.log('解析的学期列表:', semestersList)
 
         // 反转学期顺序，最新的学期在最前面
         semestersList.reverse()
@@ -147,11 +166,12 @@ export default class GradesPage extends Component<{}, GradesState> {
             selectedSemester: semestersList[0].id,
             selectorChecked: semestersList[0].name
           }, () => {
+            console.log('学期加载成功，开始加载成绩')
             this.loadGrades()
           })
         } else {
           // 没有学期数据，显示错误信息
-          const errorMsg = response.data.error || response.error || '未找到可用学期'
+          const errorMsg = actualData.error || response.error || '未找到可用学期'
           console.error('学期列表为空:', errorMsg)
           
           this.setState({
@@ -202,10 +222,22 @@ export default class GradesPage extends Component<{}, GradesState> {
 
     try {
       const response = await apiService.getGrades(userInfo.userId, this.state.selectedSemester) as any
+      
+      console.log('成绩API原始响应:', response)
 
       if (response && response.data) {
-        const gradesData = response.data.grades || []
-        const stats = response.data.statistics || null
+        // 处理嵌套的 data 结构
+        let actualData = response.data
+        
+        // 如果 response.data 有嵌套的 data 字段，使用嵌套的
+        if (actualData.data) {
+          actualData = actualData.data
+        }
+        
+        console.log('解析后的成绩数据:', actualData)
+        
+        const gradesData = actualData.grades || []
+        const stats = actualData.statistics || null
 
         // 计算及格率、优秀率、挂科率
         let passCount = 0

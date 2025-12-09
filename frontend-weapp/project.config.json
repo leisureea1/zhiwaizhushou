@@ -1,6 +1,6 @@
 {
   "miniprogramRoot": "dist/",
-  "projectname": "西外小助手",
+  "projectname": "知外助手",
   "description": "西安外国语大学课程表小程序",
   "appid": "your-miniprogram-appid",
   "setting": {

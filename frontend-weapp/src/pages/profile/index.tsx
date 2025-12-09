@@ -20,7 +20,7 @@ export default class ProfilePage extends Component {
     // 基于原始 front/LoginPage.tsx 的设置项
     basicSettings: [
       { icon: 'key', title: '更新网办大厅密码', color: 'blue', action: 'updateJwxtPassword' },
-      { icon: 'lock', title: '修改西外小助手密码', color: 'green', action: 'changeAppPassword' }
+      { icon: 'lock', title: '修改知外助手密码', color: 'green', action: 'changeAppPassword' }
     ],
     feedbackSettings: [
       { icon: 'headphones', title: '联系客服', color: 'blue', action: 'contact' },
@@ -40,6 +40,21 @@ export default class ProfilePage extends Component {
     this.checkLoginStatus()
   }
 
+  // 分享配置
+  onShareAppMessage() {
+    return {
+      title: '知外助手 - 校园生活服务平台',
+      path: '/pages/index/index'
+    }
+  }
+
+  // 分享到朋友圈配置
+  onShareTimeline() {
+    return {
+      title: '知外助手 - 校园生活服务平台'
+    }
+  }
+
   // 检查登录状态
   checkLoginStatus = async () => {
     const token = Taro.getStorageSync('userToken')
@@ -47,13 +62,15 @@ export default class ProfilePage extends Component {
     
     if (token && userInfo?.userId) {
       this.setState({ isLoggedIn: true })
-      // 读取今日缓存，避免频繁请求
-      const cacheKey = `user_detail_cache_${userInfo.userId}`
-      const today = new Date()
-      const todayStr = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2,'0')}-${today.getDate().toString().padStart(2,'0')}`
+      // 一直使用缓存；若切换账号则强制重新请求
+      const uid = userInfo.userId
+      const cacheKey = `user_detail_cache_${uid}`
       const cached = Taro.getStorageSync(cacheKey)
+      const lastUid = Taro.getStorageSync('last_profile_uid')
+      const switched = !!lastUid && lastUid !== uid
 
-      if (cached && cached.date === todayStr && cached.data) {
+      // 若存在缓存且未切换账号，直接使用缓存并返回（不请求后端）
+      if (cached && cached.data && !switched) {
         const updatedUserInfo = {
           ...userInfo,
           studentId: cached.data.student_code || userInfo.studentId,
@@ -67,12 +84,12 @@ export default class ProfilePage extends Component {
         return
       }
 
+      // 切换账号或无缓存时，请求后端并写入缓存
       if (this.state.isFetching) return
       this.setState({ isFetching: true })
-      // 从后端获取详细信息（每天一次）
       try {
-        const detailResponse = await apiService.getUserDetail(userInfo.userId) as any
-        if (detailResponse && detailResponse.student_id) {
+        const detailResponse = await apiService.getUserDetail(uid) as any
+        if (detailResponse && (detailResponse.student_id || detailResponse.student_code || detailResponse.name)) {
           const updatedUserInfo = {
             ...userInfo,
             studentId: detailResponse.student_code || userInfo.studentId,
@@ -82,14 +99,29 @@ export default class ProfilePage extends Component {
             className: detailResponse.class_name || ''
           }
           Taro.setStorageSync('userInfo', updatedUserInfo)
-          // 写入今日缓存
-          Taro.setStorageSync(cacheKey, { date: todayStr, data: detailResponse })
+          // 写入缓存（不再按天失效，仅覆盖）
+          Taro.setStorageSync(cacheKey, { data: detailResponse, ts: Date.now() })
+          // 记录最近一次展示详情的账号ID
+          Taro.setStorageSync('last_profile_uid', uid)
           this.setState({ userInfo: updatedUserInfo })
         } else {
           this.setState({ userInfo: userInfo })
         }
       } catch (error) {
         console.error('获取用户详细信息失败:', error)
+        // 若有缓存但因切换账号强制请求失败，则回退到缓存（如果存在）
+        if (cached && cached.data) {
+          const updatedUserInfo = {
+            ...userInfo,
+            studentId: cached.data.student_code || userInfo.studentId,
+            name: cached.data.name || userInfo.name,
+            college: cached.data.department || '',
+            major: cached.data.major || '',
+            className: cached.data.class_name || ''
+          }
+          Taro.setStorageSync('userInfo', updatedUserInfo)
+          this.setState({ userInfo: updatedUserInfo })
+        }
       } finally {
         this.setState({ isFetching: false })
       }
@@ -116,8 +148,20 @@ export default class ProfilePage extends Component {
         content: '确定要退出登录吗？',
         success: (res) => {
           if (res.confirm) {
+            // 在移除前获取当前用户ID，用于清理缓存
+            const curInfo = Taro.getStorageSync('userInfo')
+            const uid = curInfo?.userId
+            // 清理登录态
             Taro.removeStorageSync('userToken')
             Taro.removeStorageSync('userInfo')
+            // 删除个人页缓存与最近账号标记
+            try {
+              if (uid) {
+                const cacheKey = `user_detail_cache_${uid}`
+                Taro.removeStorageSync(cacheKey)
+              }
+              Taro.removeStorageSync('last_profile_uid')
+            } catch {}
             this.setState({ isLoggedIn: false })
             Taro.showToast({
               title: '已退出登录',
@@ -175,7 +219,7 @@ export default class ProfilePage extends Component {
     })
   }
 
-  // 修改西外小助手密码
+  // 修改知外助手密码
   showChangeAppPassword = () => {
     if (!this.state.isLoggedIn) {
       Taro.showToast({
@@ -284,7 +328,7 @@ export default class ProfilePage extends Component {
         
         {/* 顶部标题栏 */}
         <View className="header">
-          <Text className="title">西外小助手</Text>
+          <Text className="title">知外助手</Text>
           <View className="auth-button" onClick={this.onAuthClick}>
             <Text className="auth-text">{isLoggedIn ? '登出' : '登录'}</Text>
           </View>

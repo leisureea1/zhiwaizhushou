@@ -487,7 +487,7 @@ export default class LoginPage extends Component {
           <View className="header-decoration"></View>
           <View className="header-content">
             <Text className="app-logo">🎓</Text>
-            <Text className="app-title">西外小助手</Text>
+            <Text className="app-title">知外助手</Text>
             <Text className="app-subtitle">{mode === 'login' ? '欢迎回来' : '创建账号'}</Text>
           </View>
         </View>

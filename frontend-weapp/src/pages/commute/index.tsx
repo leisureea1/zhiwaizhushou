@@ -80,10 +80,11 @@ export default class CommutePage extends Component<any, any> {
     if (next) {
       const diff = toMs(next) - Date.now()
       if (diff > 0) {
-        const m = Math.floor(diff / 60000)
+        const h = Math.floor(diff / 3600000)
+        const m = Math.floor((diff % 3600000) / 60000)
         const s = Math.floor((diff % 60000) / 1000)
-        countdown = `${pad(m)}:${pad(s)}`
-      } else countdown = '00:00'
+        countdown = `${pad(h)}:${pad(m)}:${pad(s)}`
+      } else countdown = '00:00:00'
     }
     this.setState({ nextTime: next, nextArrive, countdown })
   }

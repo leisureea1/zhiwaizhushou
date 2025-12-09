@@ -35,6 +35,8 @@ interface LostFoundState {
   activeCategory: string
   searchQuery?: string
   statusBarHeight: number
+  featureDisabled: boolean  // 功能是否被禁用
+  offlineMessage: string    // 下线提示消息
 }
 
 // Mock 数据
@@ -147,18 +149,25 @@ export default class LostFoundPage extends Component<any, LostFoundState> {
     activeType: 'lost',
     activeCategory: 'all',
     searchQuery: '',
-    statusBarHeight: 44
+    statusBarHeight: 44,
+    featureDisabled: false,
+    offlineMessage: ''
   }
 
   componentDidMount() {
     const win = Taro.getWindowInfo ? Taro.getWindowInfo() : (Taro as any).getSystemInfoSync?.()
     const statusBarHeight = win?.statusBarHeight ? Number(win.statusBarHeight) : 44
     this.setState({ statusBarHeight })
+    // 先检查功能是否开放
+    if (!this.checkFeatureEnabled()) return
+    // 再检查登录状态
     if (!this.requireLogin()) return
     this.loadItems(true)
   }
 
   componentDidShow() {
+    // 检查功能是否开放
+    if (!this.checkFeatureEnabled()) return
     if (!this.requireLogin()) return
     const flag = Taro.getStorageSync('refresh_lost_found')
     if (flag) {
@@ -166,6 +175,36 @@ export default class LostFoundPage extends Component<any, LostFoundState> {
       this.loadItems(true)
     } else if ((this.state.items || []).length === 0) {
       this.loadItems(true)
+    }
+  }
+
+  // 检查功能是否开放（防止审核员通过路径硬跳转）
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    // 如果配置不存在或明确禁用，则阻止访问
+    if (!featureSettings.lost_found || !featureSettings.lost_found.enabled) {
+      // 设置状态为禁用，显示白屏提示页面
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.lost_found?.message || '失物招领功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
+  }
+
+  // 分享配置
+  onShareAppMessage() {
+    return {
+      title: '失物招领 - 校园失物招领平台',
+      path: '/pages/lost-found/index'
+    }
+  }
+
+  // 分享到朋友圈配置
+  onShareTimeline() {
+    return {
+      title: '失物招领 - 校园失物招领平台'
     }
   }
 
@@ -334,7 +373,28 @@ export default class LostFoundPage extends Component<any, LostFoundState> {
   }
 
   render() {
-    const { items, loading, refreshing, activeType, activeCategory } = this.state
+    const { items, loading, refreshing, activeType, activeCategory, featureDisabled, offlineMessage } = this.state
+
+    // 如果功能被禁用，显示白屏提示页面
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View 
+              className="back-home-btn"
+              onClick={() => {
+                Taro.switchTab({ url: '/pages/index/index' })
+              }}
+            >
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
 
     return (
       <View className="lost-found-page">

@@ -10,29 +10,35 @@ require_once ROOT_PATH . '/vendor/autoload.php';
 // 引入配置文件
 require_once ROOT_PATH . '/config/database.php';
 
-// CORS支持 - 处理预检请求
+// CORS支持 - 更健壮的处理（Origin 存在时回显，否则使用 * 并关闭 credentials）
+function set_cors_headers_for_request() {
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowMethods = 'GET, POST, PUT, DELETE, OPTIONS';
+    $allowHeaders = 'Content-Type, Authorization, X-Requested-With';
+
+    if ($origin) {
+        // 有 Origin 时严格回显并允许携带凭证
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+    } else {
+        // 无 Origin（如小程序开发者工具、服务端到服务端等）时放宽为 *，且不发送 credentials
+        header('Access-Control-Allow-Origin: *');
+        // 注意：根据规范，Access-Control-Allow-Credentials 不能与 * 同时使用
+    }
+    header("Access-Control-Allow-Methods: $allowMethods");
+    header("Access-Control-Allow-Headers: $allowHeaders");
+}
+
+// 处理预检请求（OPTIONS）
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    // 获取请求来源
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-    
-    // 设置CORS头 - 支持携带 credentials
-    header("Access-Control-Allow-Origin: $origin");
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-    header('Access-Control-Allow-Credentials: true'); // 允许携带凭证
+    set_cors_headers_for_request();
     header('Access-Control-Max-Age: 86400'); // 24小时
-    
-    // 对于OPTIONS请求，直接返回200
     http_response_code(200);
     exit();
 }
 
-// 设置CORS头（对于非OPTIONS请求）
-$origin = $_SERVER['HTTP_ORIGIN'] ?? 'http://localhost:5173';
-header("Access-Control-Allow-Origin: $origin");
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-header('Access-Control-Allow-Credentials: true'); // 允许携带凭证
+// 非预检请求同样设置 CORS 头
+set_cors_headers_for_request();
 
 // 简单的路由处理
 $request_uri = $_SERVER['REQUEST_URI'];
@@ -430,6 +436,43 @@ function handle_api_request($path, $method) {
             }
             break;
             
+        // 功能开关管理（管理后台）
+        case 'admin/features/list':
+            if ($method === 'GET') {
+                require_once ROOT_PATH . '/app/Controllers/AdminFeatureController.php';
+                $db = DatabaseConfig::getConnection();
+                $controller = new App\Controllers\AdminFeatureController($db);
+                $controller->getFeatureList();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+            
+        case 'admin/features/update':
+            if ($method === 'POST') {
+                require_once ROOT_PATH . '/app/Controllers/AdminFeatureController.php';
+                $db = DatabaseConfig::getConnection();
+                $controller = new App\Controllers\AdminFeatureController($db);
+                $controller->updateFeature();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+            
+        case 'admin/features/toggle':
+            if ($method === 'POST') {
+                require_once ROOT_PATH . '/app/Controllers/AdminFeatureController.php';
+                $db = DatabaseConfig::getConnection();
+                $controller = new App\Controllers\AdminFeatureController($db);
+                $controller->toggleFeature();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+            
         case 'admin/lost-found/delete':
             if ($method === 'POST') {
                 require_once ROOT_PATH . '/app/Controllers/LostFoundController.php';
@@ -491,6 +534,39 @@ function handle_api_request($path, $method) {
                 require_once ROOT_PATH . '/app/Controllers/AnnouncementController.php';
                 $controller = new AnnouncementController();
                 $controller->delete();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+
+        case 'announcement/pinned':
+            if ($method === 'GET') {
+                require_once ROOT_PATH . '/app/Controllers/AnnouncementController.php';
+                $controller = new AnnouncementController();
+                $controller->getPinnedForUser();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+
+        case 'announcement/mark-viewed':
+            if ($method === 'POST') {
+                require_once ROOT_PATH . '/app/Controllers/AnnouncementController.php';
+                $controller = new AnnouncementController();
+                $controller->markViewed();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+
+        case 'announcement/set-pinned':
+            if ($method === 'POST') {
+                require_once ROOT_PATH . '/app/Controllers/AnnouncementController.php';
+                $controller = new AnnouncementController();
+                $controller->setPinned();
             } else {
                 http_response_code(405);
                 echo json_encode(['error' => '方法不允许']);
@@ -621,6 +697,32 @@ function handle_api_request($path, $method) {
                 require_once ROOT_PATH . '/app/Controllers/LostFoundController.php';
                 $controller = new LostFoundController();
                 $controller->delete();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+        
+        // 功能开关相关路由（小程序端）
+        case 'feature/settings':
+            if ($method === 'GET') {
+                require_once ROOT_PATH . '/app/Controllers/FeatureController.php';
+                $db = DatabaseConfig::getConnection();
+                $controller = new App\Controllers\FeatureController($db);
+                $controller->getFeatureSettings();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+            
+        case 'feature/check':
+            if ($method === 'GET') {
+                require_once ROOT_PATH . '/app/Controllers/FeatureController.php';
+                $db = DatabaseConfig::getConnection();
+                $featureKey = $_GET['feature_key'] ?? '';
+                $controller = new App\Controllers\FeatureController($db);
+                $controller->checkFeature($featureKey);
             } else {
                 http_response_code(405);
                 echo json_encode(['error' => '方法不允许']);

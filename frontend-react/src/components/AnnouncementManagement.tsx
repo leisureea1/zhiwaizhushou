@@ -41,6 +41,7 @@ interface Announcement {
   author: string;
   publishDate: string;
   images?: string[]; // 图片URL数组
+  isPinned?: boolean; // 是否置顶
 }
 
 const AnnouncementManagement: React.FC = () => {
@@ -273,6 +274,25 @@ const AnnouncementManagement: React.FC = () => {
     }
   };
 
+  // 切换置顶状态
+  const handleTogglePinned = async (announcement: Announcement) => {
+    try {
+      const target = !announcement.isPinned;
+      await ApiService.setAnnouncementPinned(announcement.id, target);
+      alert(target ? '已置顶' : '已取消置顶');
+      await fetchAnnouncements();
+    } catch (error: any) {
+      console.error('设置置顶失败:', error);
+      const msg = error?.message || '设置置顶状态失败，请稍后重试';
+      if (msg.includes('未登录') || msg.includes('会话已过期')) {
+        alert('您的登录已过期，请重新登录');
+        window.location.href = '/login';
+      } else {
+        alert(msg);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 操作栏 */}
@@ -375,7 +395,12 @@ const AnnouncementManagement: React.FC = () => {
                   <TableRow key={announcement.id} className="hover:bg-gray-50">
                     <TableCell>
                       <div className="max-w-xs lg:max-w-md">
-                        <div className="font-medium truncate">{announcement.title}</div>
+                        <div className="font-medium truncate flex items-center gap-2">
+                          <span className="truncate">{announcement.title}</span>
+                          {announcement.isPinned ? (
+                            <Badge className="bg-amber-500 hover:bg-amber-600">置顶</Badge>
+                          ) : null}
+                        </div>
                         <div className="text-sm text-gray-500 truncate">{announcement.content}</div>
                       </div>
                     </TableCell>
@@ -393,6 +418,19 @@ const AnnouncementManagement: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleTogglePinned(announcement)}
+                          title={announcement.isPinned ? '取消置顶' : '置顶'}
+                        >
+                          {announcement.isPinned ? (
+                            // 使用一个小圆点表示已置顶，避免引入新图标
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">已置顶</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">置顶</span>
+                          )}
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleView(announcement)}>
                           <Eye className="w-4 h-4" />
                         </Button>

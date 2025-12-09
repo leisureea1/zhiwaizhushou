@@ -355,4 +355,76 @@ class AnnouncementController {
             SystemLog::log($adminUserId ?? null, 'announcement_delete_error', '删除公告失败: ' . $e->getMessage());
         }
     }
+    
+    /**
+     * 获取用户未查看的置顶公告（用于弹窗显示）
+     */
+    public function getPinnedForUser() {
+        try {
+            // 不做用户区分，返回所有置顶公告（前端用“每次启动仅弹一次”控制）
+            $announcements = Announcement::getPinnedAnnouncements();
+            $this->jsonResponse([
+                'success' => true,
+                'data' => $announcements
+            ]);
+        } catch (Exception $e) {
+            $this->jsonResponse(['error' => '获取置顶公告失败: ' . $e->getMessage()], 500);
+            SystemLog::log(null, 'announcement_pinned_error', '获取置顶公告失败: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 标记公告为已查看
+     */
+    public function markViewed() {
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            
+            $announcementId = $input['announcement_id'] ?? null;
+            $userUid = $input['user_id'] ?? null;
+            
+            if (!$announcementId || !$userUid) {
+                $this->jsonResponse(['error' => '缺少必要参数'], 400);
+                return;
+            }
+            
+            Announcement::markAsViewed($announcementId, $userUid);
+            
+            $this->jsonResponse([
+                'success' => true,
+                'message' => '标记成功'
+            ]);
+        } catch (Exception $e) {
+            $this->jsonResponse(['error' => '标记失败: ' . $e->getMessage()], 500);
+            SystemLog::log(null, 'announcement_mark_viewed_error', '标记公告已查看失败: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 设置公告置顶状态（管理员功能）
+     */
+    public function setPinned() {
+        try {
+            // 简化为仅参数校验，管理员校验可依赖现有后台管理入口（会话）
+            $input = json_decode(file_get_contents('php://input'), true);
+
+            if (!isset($input['id']) || !isset($input['is_pinned'])) {
+                $this->jsonResponse(['error' => '缺少必要参数'], 400);
+                return;
+            }
+
+            Announcement::setPinned($input['id'], $input['is_pinned']);
+
+            $action = $input['is_pinned'] ? '置顶' : '取消置顶';
+            SystemLog::log(null, 'announcement_pin_changed', "公告{$action}，ID: {$input['id']}");
+
+            $this->jsonResponse([
+                'success' => true,
+                'message' => "公告{$action}成功"
+            ]);
+        } catch (Exception $e) {
+            $this->jsonResponse(['error' => '设置置顶状态失败: ' . $e->getMessage()], 500);
+            SystemLog::log(null, 'announcement_pin_error', '设置公告置顶状态失败: ' . $e->getMessage());
+        }
+    }
 }

@@ -5,8 +5,34 @@ import { apiService } from '../../services/api'
 import './index.scss'
 
 export default class MyMessagesPage extends Component<any, any> {
-  state = { statusBarHeight: 44, list: [], page: 1, loading: false, hasMore: true }
-  componentDidMount(){ const w=(Taro as any).getWindowInfo?.()||(Taro as any).getSystemInfoSync?.(); this.setState({statusBarHeight: Number(w?.statusBarHeight||44)}) }
+  state = { 
+    statusBarHeight: 44, 
+    list: [], 
+    page: 1, 
+    loading: false, 
+    hasMore: true,
+    featureDisabled: false,
+    offlineMessage: ''
+  }
+  
+  componentDidMount(){ 
+    const w=(Taro as any).getWindowInfo?.()||(Taro as any).getSystemInfoSync?.()
+    this.setState({statusBarHeight: Number(w?.statusBarHeight||44)})
+    
+    if (!this.checkFeatureEnabled()) return
+  }
+  
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    if (!featureSettings.flea_market || !featureSettings.flea_market.enabled) {
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.flea_market?.message || '跳蚤市场功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
+  }
   componentDidShow(){ this.load(true) }
   load = async (refresh=false) => {
     if (this.state.loading) return
@@ -20,7 +46,23 @@ export default class MyMessagesPage extends Component<any, any> {
     } finally { this.setState({loading:false}) }
   }
   render(){
-    const { list } = this.state
+    const { list, featureDisabled, offlineMessage } = this.state
+    
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View className="back-home-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
+    
     return (
       <View className='mymessages-page'>
         <View className='status-bar' style={{height:`${this.state.statusBarHeight}px`}} />

@@ -15,7 +15,7 @@ class FleaMarket {
         if ($q) { $where[] = "(fm.title LIKE ? OR fm.description LIKE ?)"; $params[] = "%$q%"; $params[] = "%$q%"; }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
         
-        $sql = "SELECT fm.*, u.name as publisher_name, u.avatar_url as publisher_avatar FROM flea_market fm 
+        $sql = "SELECT fm.*, u.username as publisher_username, u.avatar_url as publisher_avatar FROM flea_market fm 
                 JOIN users u ON fm.publisher_uid = u.uid 
                 $whereSql 
                 ORDER BY fm.created_at DESC LIMIT ? OFFSET ?";
@@ -31,7 +31,7 @@ class FleaMarket {
      */
     public static function getById($id) {
         $stmt = DatabaseConfig::query(
-            "SELECT fm.*, u.name as publisher_name, u.avatar_url as publisher_avatar FROM flea_market fm 
+            "SELECT fm.*, u.username as publisher_username, u.avatar_url as publisher_avatar FROM flea_market fm 
              JOIN users u ON fm.publisher_uid = u.uid 
              WHERE fm.id = ?",
             [$id]
@@ -101,7 +101,7 @@ class FleaMarket {
      * 获取待审核商品列表（后台管理）
      */
     public static function getPendingList($limit = 10, $offset = 0) {
-        $sql = "SELECT fm.*, u.name as publisher_name FROM flea_market fm 
+        $sql = "SELECT fm.*, u.username as publisher_username FROM flea_market fm 
                 JOIN users u ON fm.publisher_uid = u.uid 
                 WHERE fm.status = 'pending' 
                 ORDER BY fm.created_at ASC LIMIT ? OFFSET ?";

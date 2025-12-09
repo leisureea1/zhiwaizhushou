@@ -1,460 +1,211 @@
 <?php
 /**
  * 教务系统API服务类
- * 直接调用Python API，避免使用命令行方式
+ * 通过调用 FastAPI 服务来访问教务系统数据
  */
 
 class JwxtApiService {
-    private $pythonPath;
-    private $crawlerDir;
+    private $apiBaseUrl;
     
     public function __construct() {
         require_once dirname(__DIR__) . '/Utils/Logger.php';
-        $this->pythonPath = 'python'; // 可根据需要调整Python路径
-        $this->crawlerDir = str_replace('\\', '/', dirname(__DIR__, 2) . '/../python/crawler');
+        // FastAPI 服务的基础 URL
+        $this->apiBaseUrl = 'http://127.0.0.1:8000';
+        
         if (class_exists('Logger')) {
             Logger::log('JwxtApiService.init', [
-                'pythonPath' => $this->pythonPath,
-                'crawlerDir' => $this->crawlerDir,
+                'apiBaseUrl' => $this->apiBaseUrl,
             ]);
         }
     }
     
     /**
-     * 安全删除临时文件
-     * 只允许删除系统临时目录中的文件,防止路径遍历攻击
+     * 调用 FastAPI 接口的通用方法
      *
-     * @param string $filePath 文件路径
-     * @return bool 是否删除成功
+     * @param string $endpoint API 端点（如 'course', 'grade' 等）
+     * @param array $params GET 参数数组
+     * @return array
      */
-    private function safeDeleteTempFile($filePath) {
-        if (!file_exists($filePath)) {
-            return false;
+    private function callFastAPI($endpoint, $params) {
+        $url = $this->apiBaseUrl . '/' . $endpoint . '?' . http_build_query($params);
+        
+        if (class_exists('Logger')) {
+            Logger::log('JwxtApiService.callFastAPI', [
+                'endpoint' => $endpoint,
+                'url' => $url
+            ]);
         }
         
-        // 获取真实路径
-        $realPath = realpath($filePath);
-        if ($realPath === false) {
-            error_log("[JwxtApiService] Invalid file path: {$filePath}");
-            return false;
+        $t0 = microtime(true);
+        
+        // 使用 cURL 调用 API（更可靠且支持错误处理）
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30); // 30秒超时
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10); // 10秒连接超时
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        $elapsed = round((microtime(true) - $t0) * 1000);
+        
+        if ($curlError) {
+            error_log("[JwxtApiService] cURL error: {$curlError}");
+            if (class_exists('Logger')) {
+                Logger::log('JwxtApiService.curl_error', ['error' => $curlError]);
+            }
+            return [
+                'success' => false,
+                'error' => 'FastAPI 服务调用失败: ' . $curlError
+            ];
         }
         
-        // 获取系统临时目录的真实路径
-        $tempDir = realpath(sys_get_temp_dir());
-        if ($tempDir === false) {
-            error_log("[JwxtApiService] Unable to get temp directory");
-            return false;
+        if ($httpCode !== 200) {
+            error_log("[JwxtApiService] HTTP error code: {$httpCode}");
+            if (class_exists('Logger')) {
+                Logger::log('JwxtApiService.http_error', ['code' => $httpCode]);
+            }
+            return [
+                'success' => false,
+                'error' => 'FastAPI 服务返回错误: HTTP ' . $httpCode
+            ];
         }
         
-        // 验证文件是否在系统临时目录中
-        if (strpos($realPath, $tempDir) !== 0) {
-            error_log("[JwxtApiService] Attempted to delete file outside temp directory: {$realPath}");
-            return false;
+        $data = json_decode($response, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log("[JwxtApiService] JSON decode error: " . json_last_error_msg());
+            if (class_exists('Logger')) {
+                Logger::log('JwxtApiService.json_error', [
+                    'error' => json_last_error_msg(),
+                    'response' => substr($response, 0, 500)
+                ]);
+            }
+            return [
+                'success' => false,
+                'error' => 'FastAPI 返回数据格式错误: ' . json_last_error_msg()
+            ];
         }
         
-        // 安全删除文件
-        return @unlink($realPath);
+        if (class_exists('Logger')) {
+            Logger::log('JwxtApiService.response', [
+                'elapsed_ms' => $elapsed,
+                'success' => $data['success'] ?? false
+            ]);
+        }
+        
+        return $data;
     }
     
     /**
-     * 通过Python API获取课表数据
+     * 通过 FastAPI 获取课表数据
      *
      * @param string $username 用户名（学号）
      * @param string $password 密码
-     * @param string $studentId 学号
+     * @param string $studentId 学号（可选，未使用但保持兼容性）
      * @return array
      */
     public function getSchedule($username, $password, $studentId = null) {
-        // 如果没有提供学号，则使用用户名作为学号
-        if ($studentId === null) {
-            $studentId = $username;
+        $params = [
+            'username' => $username,
+            'password' => $password
+        ];
+        
+        $result = $this->callFastAPI('course', $params);
+        
+        // 兼容旧的数据结构
+        if (isset($result['success']) && $result['success'] && isset($result['data'])) {
+            // 将 data 字段展开到根级别，以保持向后兼容
+            $data = $result['data'];
+            if (isset($data['courses'])) {
+                $result['courses'] = $data['courses'];
+            }
+            if (isset($data['course_table'])) {
+                $result['course_table'] = $data['course_table'];
+            }
         }
         
-        // 构建Python脚本
-        $pythonCode = $this->buildPythonApiCall('schedule', $username, $password, $studentId);
-        
-        // 执行Python脚本
-        return $this->executePythonScript($pythonCode);
+        return $result;
     }
     
     /**
-     * 通过Python API获取成绩数据
+     * 通过 FastAPI 获取成绩数据
      *
      * @param string $username 用户名（学号）
      * @param string $password 密码
-     * @param string $studentId 学号
+     * @param string $studentId 学号（可选，未使用但保持兼容性）
      * @param string $semesterId 学期ID（可选）
      * @return array
      */
     public function getGrades($username, $password, $studentId = null, $semesterId = null) {
-        // 如果没有提供学号，则使用用户名作为学号
-        if ($studentId === null) {
-            $studentId = $username;
+        $params = [
+            'username' => $username,
+            'password' => $password
+        ];
+        
+        if ($semesterId !== null) {
+            $params['semester_id'] = $semesterId;
         }
         
-        // 构建Python脚本
-        $pythonCode = $this->buildPythonApiCall('grades', $username, $password, $studentId, null, $semesterId);
+        $result = $this->callFastAPI('grade', $params);
         
-        // 执行Python脚本
-        return $this->executePythonScript($pythonCode);
+        // 兼容旧的数据结构
+        if (isset($result['success']) && $result['success'] && isset($result['data'])) {
+            $data = $result['data'];
+            if (isset($data['grades'])) {
+                $result['grades'] = $data['grades'];
+            }
+            if (isset($data['statistics'])) {
+                $result['statistics'] = $data['statistics'];
+            }
+            if (isset($data['semester_id'])) {
+                $result['semester_id'] = $data['semester_id'];
+            }
+        }
+        
+        return $result;
     }
     
     /**
-     * 通过Python API获取可用学期列表
+     * 通过 FastAPI 获取可用学期列表
      *
      * @param string $username 用户名（学号）
      * @param string $password 密码
      * @return array
      */
     public function getSemesters($username, $password) {
-        // 构建Python脚本
-        $pythonCode = $this->buildPythonSemestersCall($username, $password);
+        $params = [
+            'username' => $username,
+            'password' => $password
+        ];
         
-        // 执行Python脚本
-        return $this->executePythonScript($pythonCode);
+        return $this->callFastAPI('semester', $params);
     }
     
     /**
-     * 通过Python API获取用户详细信息
+     * 通过 FastAPI 获取用户详细信息
      *
      * @param string $username 用户名（学号）
      * @param string $password 密码
      * @return array
      */
     public function getUserInfo($username, $password) {
-        // 构建Python脚本
-        $pythonCode = $this->buildPythonUserInfoCall($username, $password);
+        $params = [
+            'username' => $username,
+            'password' => $password
+        ];
         
-        // 执行Python脚本
-        return $this->executePythonScript($pythonCode);
-    }
-    
-    /**
-     * 构建获取学期列表的Python脚本
-     *
-     * @param string $username 用户名
-     * @param string $password 密码
-     * @return string
-     */
-    private function buildPythonSemestersCall($username, $password) {
-        return "
-import sys
-import json
-import io
-sys.path.insert(0, '{$this->crawlerDir}')
-
-try:
-    # 强制标准输出为 UTF-8，避免 Windows 控制台编码导致乱码
-    if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8')
-    else:
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
-    from jwxt_api import JwxtAPI
-    
-    # 创建API实例
-    api = JwxtAPI()
-    
-    # 登录
-    login_result = api.login('{$username}', '{$password}')
-    
-    if not login_result.get('success'):
-        print(json.dumps({'error': '登录失败: ' + login_result.get('error', '未知错误'), 'success': False}, ensure_ascii=True))
-        sys.exit(0)
-    
-    # 调用API获取学期列表
-    semesters_data = api.get_available_semesters()
-    
-    # 输出结果
-    print(json.dumps(semesters_data, ensure_ascii=True, indent=2))
-    
-except Exception as e:
-    import traceback
-    error_detail = traceback.format_exc()
-    print(json.dumps({'error': 'Python异常: ' + str(e), 'success': False, 'detail': error_detail}, ensure_ascii=True))
-    sys.exit(0)
-";
-    }
-    
-    /**
-     * 构建调用Python user_info的脚本
-     *
-     * @param string $username 用户名
-     * @param string $password 密码
-     * @return string
-     */
-    private function buildPythonUserInfoCall($username, $password) {
-        return "
-import sys
-import json
-sys.path.insert(0, '{$this->crawlerDir}')
-
-try:
-    from jwxt_api import JwxtAPI
-    
-    # 创建API实例
-    api = JwxtAPI()
-    
-    # 登录
-    login_result = api.login('{$username}', '{$password}')
-    
-    if not login_result.get('success'):
-        import traceback
-        detail = login_result.get('error_detail') or login_result.get('error') or '未知错误'
-        out = {'success': False, 'stage': 'login', 'error': '登录失败', 'detail': detail}
-        print(json.dumps(out, ensure_ascii=True))
-        sys.exit(0)
-    
-    # 导入user_info模块
-    from user_info import get_user_info
-    
-    # 获取用户信息
-    user_info = get_user_info(api.session)
-    
-    # 输出结果
-    if isinstance(user_info, dict):
-        user_info['success'] = True
-    print(json.dumps(user_info, ensure_ascii=True, indent=2))
-    
-except Exception as e:
-    import traceback
-    error_detail = traceback.format_exc()
-    print(json.dumps({'success': False, 'error': 'Python异常', 'detail': str(e), 'trace': error_detail}, ensure_ascii=True))
-    sys.exit(0)
-";
-    }
-    
-    /**
-     * 构建调用Python API的脚本
-     *
-     * @param string $action 操作类型 ('schedule' 或 'grades')
-     * @param string $username 用户名
-     * @param string $password 密码
-     * @param string $studentId 学号
-     * @param string $weekNumber 周次（可选）
-     * @param string $semesterId 学期ID（可选）
-     * @return string
-     */
-    private function buildPythonApiCall($action, $username, $password, $studentId, $weekNumber = null, $semesterId = null) {
-        return "
-import sys
-import json
-import os
-import re
-import io
-
-# 添加项目路径到Python路径
-sys.path.insert(0, '" . dirname($this->crawlerDir) . "')
-sys.path.insert(0, '{$this->crawlerDir}')
-
-def extract_json_from_output(output):
-    '''从可能包含警告信息的输出中提取JSON'''
-    # 使用正则表达式匹配JSON对象
-    json_pattern = r'\{(?:[^{}]|(?R))*\}'
-    matches = re.findall(json_pattern, output, re.DOTALL)
-    
-    # 返回最后一个匹配的JSON（通常是实际的结果）
-    if matches:
-        return matches[-1]
-    return None
-
-try:
-    # 强制标准输出为 UTF-8，避免 Windows 控制台编码导致乱码
-    if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8')
-    else:
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
-    # 导入模块
-    from crawler.jwxt_api import JwxtAPI
-    
-    # 创建API实例
-    api = JwxtAPI()
-    
-    # 登录
-    login_result = api.login('{$username}', '{$password}')
-    
-    if not login_result.get('success'):
-        print(json.dumps({'error': '登录失败: ' + login_result.get('error', '未知错误')}, ensure_ascii=True))
-        sys.exit(1)
-    
-    result = {'username': '{$username}'}
-    
-    # 根据action执行操作
-    if '{$action}' == 'schedule':
-        # 步骤1: 获取用户信息（包含student_id）
-        from user_info import get_user_info
-        user_info = get_user_info(api.session)
+        $result = $this->callFastAPI('user', $params);
         
-        if not user_info.get('student_id'):
-            result['error'] = '无法获取学生ID'
-        else:
-            # 步骤2: 获取学期信息
-            from semester import get_semester_id
-            semester_id = get_semester_id(api.session)
-            
-            if not semester_id:
-                semester_id = '209'  # 使用默认学期
-            
-            # 步骤3: 获取课程表
-            course_table = api.get_course_table(semester_id=semester_id, student_id=user_info['student_id'])
-            
-            # 确保返回正确的数据结构
-            if course_table.get('success'):
-                result['course_table'] = course_table
-                # 兼容旧的数据结构
-                if 'courses' in course_table:
-                    result['courses'] = course_table['courses']
-            else:
-                result['error'] = '获取课表失败: ' + course_table.get('error', '未知错误')
-    elif '{$action}' == 'grades':
-        # 获取成绩
-        semester_id_param = '{$semesterId}'
-        semester_id = semester_id_param if semester_id_param and semester_id_param != '' else None
-        
-        grades = api.get_grades(semester_id=semester_id, summary=True)
-        
-        # 确保返回正确的数据结构
-        if grades.get('success'):
-            result['grades'] = grades.get('grades', [])
-            result['statistics'] = grades.get('statistics', {})
-            result['semester_id'] = grades.get('semester_id')
-            # 兼容旧的数据结构
-            if 'courses' in grades:
-                result['grades_list'] = grades['courses']
-        else:
-            result['error'] = '获取成绩失败: ' + grades.get('error', '未知错误')
-    
-    # 输出结果
-    print(json.dumps(result, ensure_ascii=True, indent=2))
-    
-except Exception as e:
-    import traceback
-    error_detail = traceback.format_exc()
-    print(f\"Error occurred: {str(e)}\", file=sys.stderr)
-    print(f\"Traceback: {error_detail}\", file=sys.stderr)
-    print(json.dumps({
-        'success': False,
-        'error': 'Python执行异常: ' + str(e),
-        'detail': error_detail
-    }, ensure_ascii=True))
-    sys.exit(0)
-";
-    }
-    
-    /**
-     * 执行Python脚本
-     *
-     * @param string $pythonCode Python代码
-     * @return array
-     */
-    private function executePythonScript($pythonCode) {
-        // 创建临时文件
-        $tempFile = tempnam(sys_get_temp_dir(), 'jwxt_api_');
-        file_put_contents($tempFile, $pythonCode);
-        
-        // 记录临时文件路径以便调试
-        error_log("[JwxtApiService] Python temp file: " . $tempFile);
-        
-        try {
-            // 执行Python脚本 - 使用 escapeshellarg 防止命令注入
-            $safePythonPath = escapeshellarg($this->pythonPath);
-            $safeTempFile = escapeshellarg($tempFile);
-            $command = "{$safePythonPath} {$safeTempFile} 2>&1";
-            $t0 = microtime(true);
-            $output = shell_exec($command);
-            $elapsed = round((microtime(true) - $t0) * 1000);
-            
-            // 记录原始输出
-            error_log("[JwxtApiService] Command: {$command}");
-            error_log("[JwxtApiService] Elapsed(ms): {$elapsed}");
-            error_log("[JwxtApiService] Python output length: " . strlen($output));
-            error_log("[JwxtApiService] Python output (first 2000 chars): " . substr($output, 0, 2000));
-            if (class_exists('Logger')) {
-                Logger::log('JwxtApiService.raw_output', [
-                    'elapsed_ms' => $elapsed,
-                    'len' => strlen($output),
-                    'head' => mb_substr($output, 0, 2000, 'UTF-8')
-                ]);
-            }
-            
-            // 安全删除临时文件
-            $this->safeDeleteTempFile($tempFile);
-            
-            // 如果输出为空或只包含空白字符
-            if (empty(trim($output))) {
-                error_log("[JwxtApiService] Python script returned no output");
-                return ['error' => 'Python脚本未返回任何输出'];
-            }
-            
-            // 尝试从输出中提取JSON
-            $jsonData = $this->extractJsonFromOutput($output);
-            
-            if ($jsonData === null) {
-                // 检查是否是登录错误或其他明确的错误信息
-                if (strpos($output, '401') !== false || strpos($output, '登录') !== false) {
-                    return ['error' => '登录失败: 网络请求失败: 401 Client Error'];
-                }
-                error_log("[JwxtApiService] Failed to extract JSON from output");
-                if (class_exists('Logger')) {
-                    Logger::log('JwxtApiService.json_extract_failed', [ 'head' => mb_substr($output, 0, 500, 'UTF-8') ]);
-                }
-                return ['error' => 'Python脚本输出无效: 无法解析JSON (输出: ' . substr($output, 0, 500) . ')'];
-            }
-            
-            // 解析JSON输出
-            $data = json_decode($jsonData, true);
-            
-            // 检查是否有错误
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return ['error' => 'Python脚本输出无效: ' . json_last_error_msg() . ' (输出: ' . substr($jsonData, 0, 500) . ')'];
-            }
-            
-            // 检查返回的数据中是否有错误信息
-            if (isset($data['error'])) {
-                return $data;
-            }
-            
-            return $data ?: ['error' => 'Python脚本未返回有效数据'];
-        } catch (Exception $e) {
-            // 确保安全删除临时文件
-            $this->safeDeleteTempFile($tempFile);
-            return ['error' => '执行Python脚本时发生错误: ' . $e->getMessage()];
-        }
-    }
-    
-    /**
-     * 从可能包含警告信息的输出中提取JSON
-     *
-     * @param string $output Python脚本的完整输出
-     * @return string|null 提取到的JSON字符串
-     */
-    private function extractJsonFromOutput($output) {
-        // 移除可能的警告信息，只保留JSON部分
-        // 查找第一个{和最后一个}之间的内容
-        $start = strpos($output, '{');
-        $end = strrpos($output, '}');
-        
-        if ($start !== false && $end !== false && $end > $start) {
-            $jsonStr = substr($output, $start, $end - $start + 1);
-            // 验证这是否是一个有效的JSON
-            json_decode($jsonStr);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $jsonStr;
-            }
-        }
-        // 兼容数组 JSON 输出 [ ... ]
-        $startArr = strpos($output, '[');
-        $endArr = strrpos($output, ']');
-        if ($startArr !== false && $endArr !== false && $endArr > $startArr) {
-            $jsonStr = substr($output, $startArr, $endArr - $startArr + 1);
-            json_decode($jsonStr);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $jsonStr;
-            }
+        // 兼容旧的数据结构：将 data 字段的内容提升到根级别
+        if (isset($result['success']) && $result['success'] && isset($result['data'])) {
+            $result = array_merge($result, $result['data']);
         }
         
-        return null;
+        return $result;
     }
 }
 ?>

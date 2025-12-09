@@ -8,11 +8,11 @@ from typing import Dict, Optional, List
 from pathlib import Path
 import json
 
-from auth import login_and_get_cookies, load_cookies, AuthError
-from semester import get_semester_info, get_available_semesters
-from course import get_course_table
-from grade import get_grade_report, get_all_grades, get_grade_summary
-from user_info import get_user_info as _get_user_info
+from .auth import login_and_get_cookies, load_cookies, AuthError
+from .semester import get_semester_info, get_available_semesters
+from .course import get_course_table
+from .grade import get_grade_report, get_all_grades, get_grade_summary
+from .user_info import get_user_info as _get_user_info
 
 
 class JwxtAPI:

@@ -197,7 +197,7 @@ export default class ChangeAppPasswordPage extends Component<{}, PasswordState> 
           <View className="form-card">
             <View className="info-section">
               <Text className="info-icon">🔒</Text>
-              <Text className="info-title">修改西外小助手密码</Text>
+              <Text className="info-title">修改知外助手密码</Text>
               <Text className="info-desc">
                 修改小程序登录密码{'\n'}
                 修改成功后需要重新登录

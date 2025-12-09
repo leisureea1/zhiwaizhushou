@@ -33,6 +33,8 @@ interface FleaMarketState {
   activeCategory: string
   searchQuery: string
   statusBarHeight: number
+  featureDisabled: boolean  // 功能是否被禁用
+  offlineMessage: string    // 下线提示消息
 }
 
 // Mock 数据
@@ -140,18 +142,25 @@ export default class FleaMarketPage extends Component<any, FleaMarketState> {
     hasMore: true,
     activeCategory: 'all',
     searchQuery: '',
-    statusBarHeight: 44
+    statusBarHeight: 44,
+    featureDisabled: false,
+    offlineMessage: ''
   }
 
   componentDidMount() {
     const win = Taro.getWindowInfo ? Taro.getWindowInfo() : (Taro as any).getSystemInfoSync?.()
     const statusBarHeight = win?.statusBarHeight ? Number(win.statusBarHeight) : 44
     this.setState({ statusBarHeight })
+    // 先检查功能是否开放
+    if (!this.checkFeatureEnabled()) return
+    // 再检查登录状态
     if (!this.requireLogin()) return
     this.loadProducts(true)
   }
 
   componentDidShow() {
+    // 检查功能是否开放
+    if (!this.checkFeatureEnabled()) return
     // 检查是否需要刷新
     if (!this.requireLogin()) return
     const flag = Taro.getStorageSync('refresh_flea_market')
@@ -160,6 +169,36 @@ export default class FleaMarketPage extends Component<any, FleaMarketState> {
       this.loadProducts(true)
     } else if ((this.state.products || []).length === 0) {
       this.loadProducts(true)
+    }
+  }
+
+  // 检查功能是否开放（防止审核员通过路径硬跳转）
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    // 如果配置不存在或明确禁用，则阻止访问
+    if (!featureSettings.flea_market || !featureSettings.flea_market.enabled) {
+      // 设置状态为禁用，显示白屏提示页面
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.flea_market?.message || '跳蚤市场功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
+  }
+
+  // 分享配置
+  onShareAppMessage() {
+    return {
+      title: '跳蚤市场 - 校园二手交易平台',
+      path: '/pages/flea-market/index'
+    }
+  }
+
+  // 分享到朋友圈配置
+  onShareTimeline() {
+    return {
+      title: '跳蚤市场 - 校园二手交易平台'
     }
   }
 
@@ -327,7 +366,28 @@ export default class FleaMarketPage extends Component<any, FleaMarketState> {
   }
 
   render() {
-    const { products, loading, refreshing, activeCategory } = this.state
+    const { products, loading, refreshing, activeCategory, featureDisabled, offlineMessage } = this.state
+
+    // 如果功能被禁用，显示白屏提示页面
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View 
+              className="back-home-btn"
+              onClick={() => {
+                Taro.switchTab({ url: '/pages/index/index' })
+              }}
+            >
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
 
     return (
       <View className="flea-market-page">

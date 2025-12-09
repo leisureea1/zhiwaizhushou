@@ -8,6 +8,7 @@ import { DateUtil } from '../../utils/date'
 import { apiService } from '../../services/api'
 import './index.scss'
 import AppIcon from '../../components/AppIcon/index'
+import AnnouncementModal from '../../components/AnnouncementModal/index'
 
 interface Course {
   name: string
@@ -17,6 +18,15 @@ interface Course {
   dayOfWeek: number  // 1-7 (周一到周日)
   startSection: number  // 开始节次
   endSection: number    // 结束节次
+}
+
+interface Announcement {
+  id: number
+  title: string
+  content: string
+  author_name: string
+  created_at: string
+  images?: string
 }
 
 interface ScheduleState {
@@ -37,9 +47,17 @@ interface ScheduleState {
   shareCanvasHeight: number
   showSharePreview: boolean
   shareImagePath: string
+  // 公告相关状态
+  showAnnouncementModal: boolean
+  pinnedAnnouncements: Announcement[]
+  currentAnnouncementIndex: number
 }
 
 export default class SchedulePage extends Component<any, ScheduleState> {
+  // 本次应用启动内，是否已经在本页面弹过登录提示（内存标记，配合本地存储保证单次）
+  private hasShownLoginModal: boolean = false
+  // 非强制刷新时的后台重验证标记，防止同一时刻重复拉取
+  private isRevalidating: boolean = false
 
   state: ScheduleState = {
     // 动态获取当前周的日期
@@ -74,7 +92,11 @@ export default class SchedulePage extends Component<any, ScheduleState> {
     shareCanvasWidth: 0,
     shareCanvasHeight: 0,
     showSharePreview: false,
-    shareImagePath: ''
+    shareImagePath: '',
+    // 公告相关状态
+    showAnnouncementModal: false,
+    pinnedAnnouncements: [],
+    currentAnnouncementIndex: 0
   }
 
   // 固定课程卡片“基色”调色板（粉彩系，使用Hex作为基础色，不带透明度）
@@ -251,6 +273,29 @@ export default class SchedulePage extends Component<any, ScheduleState> {
   componentDidShow() {
     // 每次页面显示时重新加载课程表（用户登录后返回会触发）
     this.loadCourseSchedule()
+    
+    // 检查是否需要加载置顶公告（仅在首次访问时）
+    this.checkAndLoadPinnedAnnouncements()
+
+    // 公告检查触发后再尝试触发未登录提示（若此刻有公告弹窗，会在关闭后再触发）
+    this.tryShowLoginPrompt()
+  }
+
+  // 分享配置
+  onShareAppMessage() {
+    return {
+      title: '西外课程表 - 便捷查看课表',
+      path: '/pages/schedule/index',
+      imageUrl: weappLogo
+    }
+  }
+
+  // 分享到朋友圈配置
+  onShareTimeline() {
+    return {
+      title: '西外课程表 - 便捷查看课表',
+      imageUrl: weappLogo
+    }
   }
 
   loadCurrentWeekDates = () => {
@@ -312,24 +357,48 @@ export default class SchedulePage extends Component<any, ScheduleState> {
       const today = this.getTodayStr()
       const cached = Taro.getStorageSync(cacheKey)
 
-      // 优先使用“当天缓存”，除非forceRefresh
-      if (!forceRefresh && cached && cached.date === today && Array.isArray(cached.courses)) {
-        this.setState({ courses: cached.courses })
-        return 'ok'
+      // 方案A（SWR）：
+      // 1) 非强制刷新：若有任何缓存，先立即渲染缓存，保证首屏不空白；必要时在后台静默刷新
+      if (!forceRefresh) {
+        if (cached && Array.isArray(cached.courses)) {
+          // 先显示缓存（可能是前一天的），提升首屏体验
+          this.setState({ courses: cached.courses })
+          // 条件重验证：缓存不是今天的数据时后台拉新；避免重复 revalidate
+          const needRevalidate = cached.date !== today
+          if (needRevalidate && !this.isRevalidating) {
+            this.isRevalidating = true
+            ;(async () => {
+              try {
+                const response = await apiService.getCourseSchedule() as any
+                if (response && response.courses) {
+                  const fresh = this.mapCoursesFromBackend(response.courses)
+                  // 更新 UI 与缓存
+                  this.setState({ courses: fresh })
+                  Taro.setStorageSync(cacheKey, { date: today, courses: fresh })
+                }
+              } catch (e) {
+                console.error('后台刷新课程失败，保留缓存数据', e)
+              } finally {
+                this.isRevalidating = false
+              }
+            })()
+          }
+          return 'ok'
+        }
+        // 没有任何缓存，则走正常请求，但不清空 UI（本就无数据）
       }
 
+      // 2) 强制刷新或首次无缓存：走同步请求流程，保持原有交互（显示 loading，等待结果）
       this.setState({ loading: true })
 
       let courses: Course[] | null = null
       try {
-        // 从 userInfo 中取到教务用户名/密码用于后端调用
         const response = await apiService.getCourseSchedule() as any
         if (response && response.courses) {
           courses = this.mapCoursesFromBackend(response.courses)
         }
       } catch (e) {
         console.error('请求课程失败，尝试使用历史缓存', e)
-        // 请求失败时使用任意历史缓存兜底
         if (cached && Array.isArray(cached.courses)) {
           courses = cached.courses
         }
@@ -337,7 +406,6 @@ export default class SchedulePage extends Component<any, ScheduleState> {
 
       if (courses) {
         this.setState({ courses })
-        // 覆盖缓存（每日一次）
         Taro.setStorageSync(cacheKey, { date: today, courses })
         return 'ok'
       }
@@ -907,8 +975,8 @@ export default class SchedulePage extends Component<any, ScheduleState> {
     // 左侧文字区域（删除logo）
     const textAreaX = innerX
     const textAreaW = Math.max(0, qrX - 24 - textAreaX)
-    const title = '小Xisuer· 课表分享'
-    const subtitle = '欢迎使用小Xisuer小程序，便捷查看课表、成绩等'
+    const title = '知外助手· 课表分享'
+    const subtitle = '欢迎使用知外助手小程序，便捷查看课表、成绩等'
 
     const wrapSimple = (t: string, size: number, maxW: number) => {
       ctx.setFontSize(size)
@@ -996,6 +1064,118 @@ export default class SchedulePage extends Component<any, ScheduleState> {
         Taro.showToast({ title: '刷新失败', icon: 'none', duration: 1500 })
       }
     }, 800)
+  }
+
+  // ==================== 公告相关方法 ====================
+  
+  // 检查并加载置顶公告（仅在首次访问时）
+  checkAndLoadPinnedAnnouncements = async () => {
+    try {
+      // 检查是否已经在当前会话中检查过公告
+      const sessionKey = 'schedule_announcements_checked'
+      const appLaunchId = Taro.getStorageSync('appLaunchId')
+      const checkedAt = Taro.getStorageSync(sessionKey)
+      if (appLaunchId && checkedAt && checkedAt === appLaunchId) {
+        return // 本次应用启动已检查过
+      }
+      
+      // 获取全局置顶公告（无需登录）
+      const result = await apiService.getPinnedAnnouncements() as any
+      
+      if (result.success && result.data && result.data.length > 0) {
+        this.setState({
+          pinnedAnnouncements: result.data,
+          currentAnnouncementIndex: 0,
+          showAnnouncementModal: true
+        })
+      }
+      
+  // 标记本次会话已检查过公告（按应用启动维度）
+  const curLaunchId = Taro.getStorageSync('appLaunchId') || Date.now()
+  Taro.setStorageSync('appLaunchId', curLaunchId)
+  Taro.setStorageSync(sessionKey, curLaunchId)
+      
+    } catch (error) {
+      console.error('获取置顶公告失败:', error)
+    }
+  }
+  
+  // 关闭公告弹窗
+  handleCloseAnnouncementModal = () => {
+    this.setState({
+      showAnnouncementModal: false,
+      pinnedAnnouncements: [],
+      currentAnnouncementIndex: 0
+    }, () => {
+      // 公告关闭后再尝试提示登录（仅当未登录且本次启动未提示过时）
+      this.tryShowLoginPrompt()
+    })
+  }
+  
+  // 显示下一条公告
+  handleNextAnnouncement = () => {
+    const { currentAnnouncementIndex, pinnedAnnouncements } = this.state
+    if (currentAnnouncementIndex < pinnedAnnouncements.length - 1) {
+      this.setState({
+        currentAnnouncementIndex: currentAnnouncementIndex + 1
+      })
+    }
+  }
+
+  // ==================== 未登录提示（与公告串联） ====================
+  // 判断是否已登录（以 userToken + userInfo.userId/uid 为准）
+  isLoggedIn = (): boolean => {
+    try {
+      const token = Taro.getStorageSync('userToken')
+      const userInfo = Taro.getStorageSync('userInfo')
+      return !!token && !!(userInfo && (userInfo.userId || userInfo.uid))
+    } catch {
+      return false
+    }
+  }
+
+  // 当前应用启动是否已经在课表页弹过登录提示
+  hasShownLoginPromptThisLaunch = (): boolean => {
+    try {
+      const appLaunchId = Taro.getStorageSync('appLaunchId')
+      const shownAt = Taro.getStorageSync('schedule_login_prompt_shown_at_launch')
+      return !!appLaunchId && !!shownAt && appLaunchId === shownAt
+    } catch {
+      return this.hasShownLoginModal
+    }
+  }
+
+  markLoginPromptShown = () => {
+    try {
+      const appLaunchId = Taro.getStorageSync('appLaunchId') || Date.now()
+      Taro.setStorageSync('appLaunchId', appLaunchId)
+      Taro.setStorageSync('schedule_login_prompt_shown_at_launch', appLaunchId)
+    } catch {}
+    this.hasShownLoginModal = true
+  }
+
+  // 在不与公告弹窗冲突的前提下，尝试弹出“去登录”提示；只出现一次
+  tryShowLoginPrompt = () => {
+    // 已登录则不提示
+    if (this.isLoggedIn()) return
+    // 正在展示公告时不打断，等待公告关闭后再触发
+    if (this.state.showAnnouncementModal) return
+    // 本页面已提示过或本次启动已提示过，则不再重复
+    if (this.hasShownLoginModal || this.hasShownLoginPromptThisLaunch()) return
+
+    // 标记为已提示（即便用户取消，也不再打扰）
+    this.markLoginPromptShown()
+    Taro.showModal({
+      title: '提示',
+      content: '请先登录后查看课程表',
+      confirmText: '去登录',
+      cancelText: '稍后',
+      success: (res) => {
+        if (res.confirm) {
+          Taro.navigateTo({ url: '/pages/login/index' })
+        }
+      }
+    })
   }
 
   render() {
@@ -1240,6 +1420,16 @@ export default class SchedulePage extends Component<any, ScheduleState> {
               width: `${this.state.shareCanvasWidth}px`,
               height: `${this.state.shareCanvasHeight}px`
             }}
+          />
+        )}
+        
+        {/* 公告弹窗 */}
+        {this.state.showAnnouncementModal && this.state.pinnedAnnouncements.length > 0 && (
+          <AnnouncementModal
+            announcements={this.state.pinnedAnnouncements}
+            currentIndex={this.state.currentAnnouncementIndex}
+            onClose={this.handleCloseAnnouncementModal}
+            onNext={this.handleNextAnnouncement}
           />
         )}
       </View>

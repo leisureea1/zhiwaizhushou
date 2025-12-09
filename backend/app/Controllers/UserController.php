@@ -35,6 +35,13 @@ class UserController {
                 echo json_encode(['error' => '该用户名已被注册']);
                 return;
             }
+
+            // 检查学号是否已存在
+            if (User::findByEduSystemUsername($input['edu_system_username'])) {
+                http_response_code(409);
+                echo json_encode(['error' => '该学号已被注册']);
+                return;
+            }
             
             // 密码加密
             $passwordHash = password_hash($input['password'], PASSWORD_DEFAULT);

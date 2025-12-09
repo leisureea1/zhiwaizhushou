@@ -14,6 +14,17 @@ class User {
         );
         return $stmt->fetch();
     }
+
+    /**
+     * 根据教务系统账号查找用户
+     */
+    public static function findByEduSystemUsername($eduSystemUsername) {
+        $stmt = DatabaseConfig::query(
+            "SELECT * FROM users WHERE edu_system_username = ?",
+            [$eduSystemUsername]
+        );
+        return $stmt->fetch();
+    }
     
     /**
      * 根据真实姓名查找用户

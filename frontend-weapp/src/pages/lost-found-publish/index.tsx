@@ -16,6 +16,8 @@ interface PublishState {
   submitting: boolean
   statusBarHeight: number
   wechatQr?: string
+  featureDisabled: boolean
+  offlineMessage: string
 }
 
 const CATEGORIES = [
@@ -41,12 +43,15 @@ export default class LostFoundPublishPage extends Component<any, PublishState> {
     images: [],
     submitting: false,
     statusBarHeight: 44,
-    wechatQr: ''
+    wechatQr: '',
+    featureDisabled: false,
+    offlineMessage: ''
   }
 
   maxImages = 9
 
   componentDidMount() {
+    if (!this.checkFeatureEnabled()) return
     // 从路由参数获取类型
     const pages = Taro.getCurrentPages()
     const currentPage = pages[pages.length - 1]
@@ -57,6 +62,18 @@ export default class LostFoundPublishPage extends Component<any, PublishState> {
     const statusBarHeight = win?.statusBarHeight ? Number(win.statusBarHeight) : 44
     this.setState({ statusBarHeight })
     if (editId) this.loadDetail(String(editId))
+  }
+
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    if (!featureSettings.lost_found || !featureSettings.lost_found.enabled) {
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.lost_found?.message || '失物招领功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
   }
 
   // 详情回填（编辑）
@@ -365,8 +382,25 @@ export default class LostFoundPublishPage extends Component<any, PublishState> {
       time,
       contact,
       images,
-      submitting
+      submitting,
+      featureDisabled,
+      offlineMessage
     } = this.state
+
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View className="back-home-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
 
     const categoryIndex = CATEGORIES.findIndex(c => c.value === category)
 

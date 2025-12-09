@@ -12,10 +12,25 @@ interface Item {
   status: string
 }
 
-interface State { statusBarHeight: number; uid: string; username: string; navigating?: boolean }
+interface State { 
+  statusBarHeight: number
+  uid: string
+  username: string
+  navigating?: boolean
+  featureDisabled: boolean
+  offlineMessage: string
+}
 
 export default class FleaMarketMinePage extends Component<any, State> {
-  state: State = { statusBarHeight: 44, uid: '', username: '', navigating: false }
+  state: State = { 
+    statusBarHeight: 44, 
+    uid: '', 
+    username: '', 
+    navigating: false,
+    featureDisabled: false,
+    offlineMessage: ''
+  }
+  
   goSafe = (url: string) => {
     if (this.state.navigating) return
     this.setState({ navigating: true }, () => {
@@ -30,13 +45,42 @@ export default class FleaMarketMinePage extends Component<any, State> {
     const win = Taro.getWindowInfo ? Taro.getWindowInfo() : (Taro as any).getSystemInfoSync?.()
     const statusBarHeight = win?.statusBarHeight ? Number(win.statusBarHeight) : 44
     const userInfo = Taro.getStorageSync('userInfo') || {}
-    // 显示小程序账户名：优先登录时的 username，其次回退到 name
     const username = userInfo.username || userInfo.userName || userInfo.name || ''
     this.setState({ statusBarHeight, uid: String(userInfo.userId || userInfo.uid || ''), username })
+    
+    if (!this.checkFeatureEnabled()) return
+  }
+
+  checkFeatureEnabled = (): boolean => {
+    const featureSettings = Taro.getStorageSync('featureSettings') || {}
+    if (!featureSettings.flea_market || !featureSettings.flea_market.enabled) {
+      this.setState({
+        featureDisabled: true,
+        offlineMessage: featureSettings.flea_market?.message || '跳蚤市场功能暂时关闭，敬请期待'
+      })
+      return false
+    }
+    return true
   }
 
   render() {
-    const { uid, username } = this.state
+    const { uid, username, featureDisabled, offlineMessage } = this.state
+    
+    if (featureDisabled) {
+      return (
+        <View className="feature-disabled-page">
+          <View className="disabled-content">
+            <View className="disabled-icon">🚫</View>
+            <Text className="disabled-title">功能暂未开放</Text>
+            <Text className="disabled-message">{offlineMessage}</Text>
+            <View className="back-home-btn" onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
+              <Text className="btn-text">返回首页</Text>
+            </View>
+          </View>
+        </View>
+      )
+    }
+    
     const userInfo = Taro.getStorageSync('userInfo') || {}
     const avatarUrl = userInfo.avatarUrl || userInfo.avatar || ''
     return (

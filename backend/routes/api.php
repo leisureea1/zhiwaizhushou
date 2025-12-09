@@ -29,9 +29,12 @@ $router->add('GET', '/api/course/semesters', 'CourseController@getSemesters');
 // 公告相关路由
 $router->add('GET', '/api/announcement/list', 'AnnouncementController@getList');
 $router->add('GET', '/api/announcement/detail', 'AnnouncementController@getDetail');
+$router->add('GET', '/api/announcement/pinned', 'AnnouncementController@getPinnedForUser');
 $router->add('POST', '/api/announcement/create', 'AnnouncementController@create');
 $router->add('POST', '/api/announcement/update', 'AnnouncementController@update');
 $router->add('POST', '/api/announcement/delete', 'AnnouncementController@delete');
+$router->add('POST', '/api/announcement/mark-viewed', 'AnnouncementController@markViewed');
+$router->add('POST', '/api/announcement/set-pinned', 'AnnouncementController@setPinned');
 
 // 跳蚤市场相关路由
 $router->add('GET', '/api/flea-market/list', 'FleaMarketController@getList');
@@ -65,4 +68,13 @@ $router->add('GET', '/api/admin/system-logs/stats', 'SystemLogController@getStat
 $router->add('GET', '/api/admin/notifications/settings', 'NotificationController@getSettings');
 $router->add('POST', '/api/admin/notifications/settings', 'NotificationController@updateSettings');
 $router->add('POST', '/api/admin/notifications/test-bark', 'NotificationController@testBark');
+
+// 功能开关相关路由（小程序端）
+$router->add('GET', '/api/feature/settings', 'FeatureController@getFeatureSettings');
+$router->add('GET', '/api/feature/check', 'FeatureController@checkFeature');
+
+// 管理员-功能开关管理路由
+$router->add('GET', '/api/admin/features/list', 'AdminFeatureController@getFeatureList');
+$router->add('POST', '/api/admin/features/update', 'AdminFeatureController@updateFeature');
+$router->add('POST', '/api/admin/features/toggle', 'AdminFeatureController@toggleFeature');
 

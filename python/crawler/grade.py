@@ -6,7 +6,7 @@ from typing import Dict, List
 import requests
 from bs4 import BeautifulSoup
 
-from semester import get_semester_id
+from .semester import get_semester_id
 
 
 class GradeError(Exception):

@@ -1,7 +1,7 @@
 import Taro from '@tarojs/taro'
 
 // API 基础配置
-const BASE_URL = 'http://localhost:8000' // PHP后端地址
+const BASE_URL = 'https://api.xisu.leisureea.cn' // PHP后端地址
 
 export const API_BASE_URL = BASE_URL
 
@@ -20,6 +20,19 @@ interface RequestOptions {
 }
 
 class ApiService {
+  // 进行中请求去重池：相同 method+url+data 的请求复用同一个 Promise
+  private inflight: Map<string, Promise<any>> = new Map()
+
+  // 稳定序列化，确保对象 key 顺序一致
+  private stableStringify(obj: any): string {
+    if (obj === null || obj === undefined) return ''
+    if (typeof obj !== 'object') return String(obj)
+    if (Array.isArray(obj)) return '[' + obj.map((v) => this.stableStringify(v)).join(',') + ']'
+    const keys = Object.keys(obj).sort()
+    const parts = keys.map((k) => `${JSON.stringify(k)}:${this.stableStringify((obj as any)[k])}`)
+    return '{' + parts.join(',') + '}'
+  }
+
   // 获取存储的token
   getToken(): string | null {
     return Taro.getStorageSync('userToken') || null
@@ -43,14 +56,28 @@ class ApiService {
         }
       }
 
-      const response = await Taro.request({
+      // 去重 key（不包含 headers，避免 Authorization 差异导致无法合并；默认一个端同一时刻仅有一个登录用户）
+      const dedupeKey = `${method} ${url} ${this.stableStringify(data)}`
+      if (this.inflight.has(dedupeKey)) {
+        return (this.inflight.get(dedupeKey) as Promise<any>) as Promise<T>
+      }
+
+      const p = Taro.request({
         url: BASE_URL + url,
         method,
         data,
         header: headers
       })
+      // 将请求 Promise 放入去重池
+      this.inflight.set(dedupeKey, p as unknown as Promise<any>)
 
-      if (response.statusCode === 200) {
+      const response = await p.finally(() => {
+        // 请求完成后移除去重标记
+        this.inflight.delete(dedupeKey)
+      })
+
+      // 接受所有 2xx 状态码为成功
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         return response.data
       } else {
         const errorData = response.data as any
@@ -283,6 +310,25 @@ class ApiService {
     })
   }
 
+  /**
+   * 获取用户未查看的置顶公告
+   */
+  async getPinnedAnnouncements() {
+    return this.request({
+      url: '/api/announcement/pinned',
+      method: 'GET',
+      needAuth: false
+    })
+  }
+
+  /**
+   * 标记公告为已查看
+   */
+  // 标记已查看（当前需求不需要后端标记，保留接口以备后用）
+  async markAnnouncementViewed(_announcementId: number, _userId?: string | number) {
+    return { success: true }
+  }
+
   // ==================== 跳蚤市场相关 ====================
 
   /**
@@ -431,6 +477,17 @@ class ApiService {
       data: {
         user_id: userId
       }
+    })
+  }
+
+  /**
+   * 获取功能配置（小程序启动时调用）
+   */
+  async getFeatureSettings() {
+    return this.request({
+      url: '/api/feature/settings',
+      method: 'GET',
+      needAuth: false
     })
   }
 }

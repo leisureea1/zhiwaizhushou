@@ -2,6 +2,7 @@ import { Component } from 'react'
 import { View, Text, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import './index.scss'
+import cardQr from '../../assets/images/card.png'
 
 interface FlowCardState {
   showModal: boolean
@@ -50,12 +51,9 @@ export default class FlowCardPage extends Component<any, FlowCardState> {
                 <View className="qrcode-container">
                   <Image 
                     className="qrcode-image" 
-                    src={
-                      // 使用远程小图，避免占用主包体积；需要可替换为你的 CDN 地址
-                      'https://img.cdn.example.com/xisu/phone-card-qr-640.jpg'
-                    }
+                    src={cardQr}
                     mode="widthFix"
-                    show-menu-by-longpress={true}
+                    showMenuByLongpress
                   />
                 </View>
                 
