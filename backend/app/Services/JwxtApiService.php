@@ -32,18 +32,17 @@ class JwxtApiService {
         if (class_exists('Logger')) {
             Logger::log('JwxtApiService.callFastAPI', [
                 'endpoint' => $endpoint,
-                'url' => $url
+                'url' => preg_replace('/password=[^&]+/', 'password=***', $url)
             ]);
         }
         
         $t0 = microtime(true);
         
-        // 使用 cURL 调用 API（更可靠且支持错误处理）
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30); // 30秒超时
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10); // 10秒连接超时
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -54,9 +53,6 @@ class JwxtApiService {
         
         if ($curlError) {
             error_log("[JwxtApiService] cURL error: {$curlError}");
-            if (class_exists('Logger')) {
-                Logger::log('JwxtApiService.curl_error', ['error' => $curlError]);
-            }
             return [
                 'success' => false,
                 'error' => 'FastAPI 服务调用失败: ' . $curlError
@@ -64,10 +60,7 @@ class JwxtApiService {
         }
         
         if ($httpCode !== 200) {
-            error_log("[JwxtApiService] HTTP error code: {$httpCode}");
-            if (class_exists('Logger')) {
-                Logger::log('JwxtApiService.http_error', ['code' => $httpCode]);
-            }
+            error_log("[JwxtApiService] HTTP error: {$httpCode}");
             return [
                 'success' => false,
                 'error' => 'FastAPI 服务返回错误: HTTP ' . $httpCode
@@ -77,21 +70,16 @@ class JwxtApiService {
         $data = json_decode($response, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log("[JwxtApiService] JSON decode error: " . json_last_error_msg());
-            if (class_exists('Logger')) {
-                Logger::log('JwxtApiService.json_error', [
-                    'error' => json_last_error_msg(),
-                    'response' => substr($response, 0, 500)
-                ]);
-            }
+            error_log("[JwxtApiService] JSON error: " . json_last_error_msg());
             return [
                 'success' => false,
-                'error' => 'FastAPI 返回数据格式错误: ' . json_last_error_msg()
+                'error' => 'FastAPI 返回数据格式错误'
             ];
         }
         
         if (class_exists('Logger')) {
             Logger::log('JwxtApiService.response', [
+                'endpoint' => $endpoint,
                 'elapsed_ms' => $elapsed,
                 'success' => $data['success'] ?? false
             ]);
@@ -101,46 +89,46 @@ class JwxtApiService {
     }
     
     /**
-     * 通过 FastAPI 获取课表数据
+     * 提取 data 字段内容（FastAPI 返回格式: {success, data, error}）
+     */
+    private function extractData($result) {
+        if (isset($result['success']) && $result['success'] && isset($result['data'])) {
+            return array_merge(['success' => true], $result['data']);
+        }
+        return $result;
+    }
+    
+    /**
+     * 获取课表数据
      *
-     * @param string $username 用户名（学号）
+     * @param string $username 学号
      * @param string $password 密码
-     * @param string $studentId 学号（可选，未使用但保持兼容性）
+     * @param string $semesterId 学期ID（可选）
      * @return array
      */
-    public function getSchedule($username, $password, $studentId = null) {
+    public function getSchedule($username, $password, $semesterId = null) {
         $params = [
             'username' => $username,
             'password' => $password
         ];
         
-        $result = $this->callFastAPI('course', $params);
-        
-        // 兼容旧的数据结构
-        if (isset($result['success']) && $result['success'] && isset($result['data'])) {
-            // 将 data 字段展开到根级别，以保持向后兼容
-            $data = $result['data'];
-            if (isset($data['courses'])) {
-                $result['courses'] = $data['courses'];
-            }
-            if (isset($data['course_table'])) {
-                $result['course_table'] = $data['course_table'];
-            }
+        if ($semesterId !== null) {
+            $params['semester_id'] = $semesterId;
         }
         
-        return $result;
+        $result = $this->callFastAPI('course', $params);
+        return $this->extractData($result);
     }
     
     /**
-     * 通过 FastAPI 获取成绩数据
+     * 获取成绩数据
      *
-     * @param string $username 用户名（学号）
+     * @param string $username 学号
      * @param string $password 密码
-     * @param string $studentId 学号（可选，未使用但保持兼容性）
      * @param string $semesterId 学期ID（可选）
      * @return array
      */
-    public function getGrades($username, $password, $studentId = null, $semesterId = null) {
+    public function getGrades($username, $password, $semesterId = null) {
         $params = [
             'username' => $username,
             'password' => $password
@@ -151,28 +139,13 @@ class JwxtApiService {
         }
         
         $result = $this->callFastAPI('grade', $params);
-        
-        // 兼容旧的数据结构
-        if (isset($result['success']) && $result['success'] && isset($result['data'])) {
-            $data = $result['data'];
-            if (isset($data['grades'])) {
-                $result['grades'] = $data['grades'];
-            }
-            if (isset($data['statistics'])) {
-                $result['statistics'] = $data['statistics'];
-            }
-            if (isset($data['semester_id'])) {
-                $result['semester_id'] = $data['semester_id'];
-            }
-        }
-        
-        return $result;
+        return $this->extractData($result);
     }
     
     /**
-     * 通过 FastAPI 获取可用学期列表
+     * 获取学期列表
      *
-     * @param string $username 用户名（学号）
+     * @param string $username 学号
      * @param string $password 密码
      * @return array
      */
@@ -182,13 +155,14 @@ class JwxtApiService {
             'password' => $password
         ];
         
-        return $this->callFastAPI('semester', $params);
+        $result = $this->callFastAPI('semester', $params);
+        return $this->extractData($result);
     }
     
     /**
-     * 通过 FastAPI 获取用户详细信息
+     * 获取用户信息
      *
-     * @param string $username 用户名（学号）
+     * @param string $username 学号
      * @param string $password 密码
      * @return array
      */
@@ -199,13 +173,23 @@ class JwxtApiService {
         ];
         
         $result = $this->callFastAPI('user', $params);
+        return $this->extractData($result);
+    }
+    
+    /**
+     * 登录验证
+     *
+     * @param string $username 学号
+     * @param string $password 密码
+     * @return array
+     */
+    public function login($username, $password) {
+        $params = [
+            'username' => $username,
+            'password' => $password
+        ];
         
-        // 兼容旧的数据结构：将 data 字段的内容提升到根级别
-        if (isset($result['success']) && $result['success'] && isset($result['data'])) {
-            $result = array_merge($result, $result['data']);
-        }
-        
-        return $result;
+        $result = $this->callFastAPI('login', $params);
+        return $this->extractData($result);
     }
 }
-?>
