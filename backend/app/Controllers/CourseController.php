@@ -15,12 +15,13 @@ class CourseController {
         $userId = $_GET['user_id'] ?? null;
         $username = $_GET['username'] ?? null;
         $password = $_GET['password'] ?? null;
+        $semesterId = $_GET['semester_id'] ?? null;
         
         // 如果提供了username和password，直接使用
         if ($username && $password) {
             try {
                 // 调用Python爬虫获取课表数据
-                $scheduleData = $this->fetchScheduleFromCrawler($username, $password);
+                $scheduleData = $this->fetchScheduleFromCrawler($username, $password, $semesterId);
                 
                 // 检查是否有错误信息
                 if (isset($scheduleData['error'])) {
@@ -63,7 +64,7 @@ class CourseController {
             }
             
             // 调用Python爬虫获取课表数据
-            $scheduleData = $this->fetchScheduleFromCrawler($user['edu_system_username'], $user['edu_system_password']);
+            $scheduleData = $this->fetchScheduleFromCrawler($user['edu_system_username'], $user['edu_system_password'], $semesterId);
             
             // 检查是否有错误信息
             if (isset($scheduleData['error'])) {
@@ -157,15 +158,12 @@ class CourseController {
     /**
      * 调用Python爬虫获取课表数据
      */
-    private function fetchScheduleFromCrawler($username, $password) {
+    private function fetchScheduleFromCrawler($username, $password, $semesterId = null) {
         // 创建API服务实例
         $apiService = new JwxtApiService();
         
-        // 获取用户学号（从用户名中提取或使用用户名作为学号）
-        $studentId = $username; // 假设用户名就是学号
-        
         // 调用API获取课表数据
-        return $apiService->getSchedule($username, $password, $studentId);
+        return $apiService->getSchedule($username, $password, $semesterId);
     }
     
     /**
@@ -175,11 +173,8 @@ class CourseController {
         // 创建API服务实例
         $apiService = new JwxtApiService();
         
-        // 获取用户学号（从用户名中提取或使用用户名作为学号）
-        $studentId = $username; // 假设用户名就是学号
-        
         // 调用API获取成绩数据
-        return $apiService->getGrades($username, $password, $studentId, $semesterId);
+        return $apiService->getGrades($username, $password, $semesterId);
     }
     
     /**
@@ -239,6 +234,49 @@ class CourseController {
             http_response_code(500);
             echo json_encode(['error' => '获取学期列表失败: ' . $e->getMessage()]);
             SystemLog::log($userId, 'semesters_fetch_error', '获取学期列表失败: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 获取考试安排
+     */
+    public function getExams() {
+        $username = $_GET['username'] ?? null;
+        $password = $_GET['password'] ?? null;
+        $semesterId = $_GET['semester_id'] ?? null;
+        
+        if (!$username || !$password) {
+            http_response_code(400);
+            echo json_encode(['error' => '缺少必要参数']);
+            return;
+        }
+        
+        try {
+            $apiService = new JwxtApiService();
+            $examsData = $apiService->getExams($username, $password, $semesterId);
+            
+            if (isset($examsData['error']) || (isset($examsData['success']) && !$examsData['success'])) {
+                $errorMsg = $examsData['error'] ?? '未知错误';
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false,
+                    'error' => '获取考试安排失败: ' . $errorMsg
+                ]);
+                return;
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'message' => '考试安排获取成功',
+                'exams' => $examsData['exams'] ?? [],
+                'total' => $examsData['total'] ?? 0
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => '获取考试安排失败: ' . $e->getMessage()
+            ]);
         }
     }
 }

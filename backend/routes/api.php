@@ -25,6 +25,7 @@ $router->add('GET', '/api/admin/dashboard/pending-items', 'AdminDashboardControl
 $router->add('GET', '/api/course/schedule', 'CourseController@getSchedule');
 $router->add('GET', '/api/course/grades', 'CourseController@getGrades');
 $router->add('GET', '/api/course/semesters', 'CourseController@getSemesters');
+$router->add('GET', '/api/course/exams', 'CourseController@getExams');
 
 // 公告相关路由
 $router->add('GET', '/api/announcement/list', 'AnnouncementController@getList');

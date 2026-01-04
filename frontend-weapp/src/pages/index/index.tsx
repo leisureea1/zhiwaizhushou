@@ -24,7 +24,7 @@ export default class IndexPage extends Component<any, IndexState> {
       { name: '成绩查询', action: 'grades', color: '#3b82f6' },
       { name: '校内地图', action: 'map', color: '#ef4444' },
       { name: '流量卡办理', action: 'flowcard', color: '#eab308' },
-      { name: '校内电话', action: 'phone', color: '#f97316' },
+      { name: '考试查询', action: 'exam', color: '#f97316' },
       { name: '跳蚤市场', action: 'market', color: '#fb923c' },
       { name: '失物招领', action: 'lost', color: '#2563eb' },
       { name: '通勤车', action: 'bus', color: '#1d4ed8' },
@@ -121,6 +121,11 @@ export default class IndexPage extends Component<any, IndexState> {
       case 'grades':
         Taro.navigateTo({
           url: '/pages/grades/index'
+        })
+        break
+      case 'exam':
+        Taro.navigateTo({
+          url: '/pages/exam/index'
         })
         break
       case 'map':

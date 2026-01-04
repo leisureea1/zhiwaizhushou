@@ -192,4 +192,26 @@ class JwxtApiService {
         $result = $this->callFastAPI('login', $params);
         return $this->extractData($result);
     }
+    
+    /**
+     * 获取考试安排
+     *
+     * @param string $username 学号
+     * @param string $password 密码
+     * @param string $semesterId 学期ID（可选）
+     * @return array
+     */
+    public function getExams($username, $password, $semesterId = null) {
+        $params = [
+            'username' => $username,
+            'password' => $password
+        ];
+        
+        if ($semesterId !== null) {
+            $params['semester_id'] = $semesterId;
+        }
+        
+        $result = $this->callFastAPI('exam', $params);
+        return $this->extractData($result);
+    }
 }

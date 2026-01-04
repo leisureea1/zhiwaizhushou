@@ -276,6 +276,17 @@ function handle_api_request($path, $method) {
             }
             break;
             
+        case 'course/exams':
+            if ($method === 'GET') {
+                require_once ROOT_PATH . '/app/Controllers/CourseController.php';
+                $controller = new CourseController();
+                $controller->getExams();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+            
         case 'admin/login':
             if ($method === 'POST') {
                 require_once ROOT_PATH . '/app/Controllers/AdminAuthController.php';

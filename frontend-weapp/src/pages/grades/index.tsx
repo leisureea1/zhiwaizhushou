@@ -151,20 +151,22 @@ export default class GradesPage extends Component<{}, GradesState> {
           []
         ).map((sem: any) => ({
           id: String(sem.id), // 确保 id 是字符串
-          name: sem.display_name || sem.name || `学期${sem.id}`
+          name: sem.display_name || sem.name || `学期${sem.id}`,
+          current: sem.current || false
         }))
 
         console.log('解析的学期列表:', semestersList)
 
-        // 反转学期顺序，最新的学期在最前面
-        semestersList.reverse()
+        // API 已返回最新学期在前，无需再反转
 
-        // 设置默认选中第一个学期（最新的）
+        // 设置默认选中当前学期（有 current 标记的），否则选第一个
         if (semestersList.length > 0) {
+          const currentSem = semestersList.find((s: any) => s.current) || semestersList[0]
+          
           this.setState({
             semesters: semestersList,
-            selectedSemester: semestersList[0].id,
-            selectorChecked: semestersList[0].name
+            selectedSemester: currentSem.id,
+            selectorChecked: currentSem.name
           }, () => {
             console.log('学期加载成功，开始加载成绩')
             this.loadGrades()

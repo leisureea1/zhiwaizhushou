@@ -613,13 +613,7 @@ export default class SchedulePage extends Component<any, ScheduleState> {
 
   // 切换周数选择器
   toggleWeekPicker = () => {
-    if (this.state.isVacation) {
-      Taro.showToast({
-        title: '假期中无法切换周数',
-        icon: 'none'
-      })
-      return
-    }
+    // 假期期间也允许切换周数查看课表
     this.setState({ showWeekPicker: !this.state.showWeekPicker })
   }
 

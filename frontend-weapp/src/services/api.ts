@@ -244,15 +244,22 @@ class ApiService {
       throw new Error('请先登录')
     }
     
+    // 构建请求参数，过滤掉 undefined 值
+    const data: Record<string, any> = {
+      username: userInfo.eduUsername,
+      password: userInfo.eduPassword
+    }
+    if (semesterId !== undefined && semesterId !== null) {
+      data.semester_id = semesterId
+    }
+    if (weekNumber !== undefined && weekNumber !== null) {
+      data.week_number = weekNumber
+    }
+    
     return this.request({
       url: '/api/course/schedule',
       method: 'GET',
-      data: {
-        username: userInfo.eduUsername,
-        password: userInfo.eduPassword,
-        semester_id: semesterId,
-        week_number: weekNumber
-      },
+      data,
       needAuth: true
     })
   }
@@ -261,13 +268,17 @@ class ApiService {
    * 获取成绩
    */
   async getGrades(userId: string, semesterId?: string) {
+    const data: Record<string, any> = {
+      user_id: userId
+    }
+    if (semesterId !== undefined && semesterId !== null) {
+      data.semester_id = semesterId
+    }
+    
     return this.request({
       url: '/api/course/grades',
       method: 'GET',
-      data: {
-        user_id: userId,
-        semester_id: semesterId
-      },
+      data,
       needAuth: true
     })
   }
@@ -282,6 +293,32 @@ class ApiService {
       data: {
         user_id: userId
       },
+      needAuth: true
+    })
+  }
+
+  /**
+   * 获取考试安排
+   */
+  async getExams(semesterId?: string) {
+    const userInfo = Taro.getStorageSync('userInfo')
+    
+    if (!userInfo || !userInfo.eduUsername || !userInfo.eduPassword) {
+      throw new Error('请先登录')
+    }
+    
+    const data: Record<string, any> = {
+      username: userInfo.eduUsername,
+      password: userInfo.eduPassword
+    }
+    if (semesterId !== undefined && semesterId !== null) {
+      data.semester_id = semesterId
+    }
+    
+    return this.request({
+      url: '/api/course/exams',
+      method: 'GET',
+      data,
       needAuth: true
     })
   }

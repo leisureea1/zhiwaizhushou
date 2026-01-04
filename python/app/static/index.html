@@ -164,6 +164,7 @@
                         <button class="btn-primary" onclick="callApi('semester')">学期信息</button>
                         <button class="btn-primary" onclick="callApi('course')">课程表</button>
                         <button class="btn-primary" onclick="callApi('grade')">成绩</button>
+                        <button class="btn-primary" onclick="callApi('exam')">考试安排</button>
                     </div>
                     
                     <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
@@ -231,7 +232,7 @@
             let url = `${API_BASE}/${endpoint}?`;
             if (!endpoint.startsWith('cache')) {
                 url += `username=${encodeURIComponent(params.username)}&password=${encodeURIComponent(params.password)}`;
-                if (params.semester_id && ['course', 'grade'].includes(endpoint)) {
+                if (params.semester_id && ['course', 'grade', 'exam'].includes(endpoint)) {
                     url += `&semester_id=${encodeURIComponent(params.semester_id)}`;
                 }
             }

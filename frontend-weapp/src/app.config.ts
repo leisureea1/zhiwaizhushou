@@ -14,6 +14,7 @@ export default {
     { root: 'pages/privacy', pages: ['index'] },
     { root: 'pages/login', pages: ['index'] },
     { root: 'pages/grades', pages: ['index'] },
+    { root: 'pages/exam', pages: ['index'] },
     { root: 'pages/update-jwxt-password', pages: ['index'] },
     { root: 'pages/change-app-password', pages: ['index'] },
     { root: 'pages/forgot-password', pages: ['index'] },

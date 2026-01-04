@@ -21,19 +21,12 @@ class GradeService:
         if semester_id:
             return self._fetch(semester_id)
         
-        # 尝试多个学期
-        semesters = ["209", "208", "207", "206", "205"]
-        
-        for sem_id in semesters:
-            result = self._fetch(sem_id)
-            if result.get("success") and result.get("grades"):
-                return result
-        
+        # 没有指定学期时返回空，让前端选择学期
         return {
             "success": True,
             "grades": [],
             "statistics": {},
-            "message": "未找到成绩数据"
+            "message": "请选择学期"
         }
     
     def _fetch(self, semester_id: str) -> Dict:

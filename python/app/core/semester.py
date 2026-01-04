@@ -3,8 +3,7 @@
 """
 
 import re
-import json
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 import requests
 from bs4 import BeautifulSoup
 
@@ -13,15 +12,6 @@ from .constants import JWXT_BASE_URL
 
 class SemesterService:
     """学期信息服务"""
-    
-    # 默认学期列表（备用）
-    DEFAULT_SEMESTERS = [
-        {"id": "209", "name": "2025-2026学年第1学期"},
-        {"id": "208", "name": "2024-2025学年第2学期"},
-        {"id": "207", "name": "2024-2025学年第1学期"},
-        {"id": "206", "name": "2023-2024学年第2学期"},
-        {"id": "205", "name": "2023-2024学年第1学期"},
-    ]
     
     def __init__(self, session: requests.Session):
         self.session = session
@@ -59,29 +49,28 @@ class SemesterService:
     def get_available(self) -> Dict:
         """获取可用学期列表"""
         try:
-            resp = self.session.get(f"{JWXT_BASE_URL}/eams/courseTableForStd.action", timeout=15)
-            soup = BeautifulSoup(resp.text, "html.parser")
+            # 通过 dataQuery 接口获取学期列表
+            resp = self.session.post(
+                f"{JWXT_BASE_URL}/eams/dataQuery.action",
+                data={"dataType": "semester"},
+                timeout=15
+            )
             
             current = self.get_current_id()
             semesters = []
             
-            # 从下拉框提取
-            select = soup.find("select", {"id": "semester_id"}) or soup.find("select", {"name": "semester.id"})
-            if select:
-                for option in select.find_all("option"):
-                    sem_id = option.get("value", "").strip()
-                    if sem_id and sem_id.isdigit():
-                        sem = {"id": sem_id, "name": option.get_text(strip=True)}
-                        if sem_id == current:
-                            sem["current"] = True
-                        semesters.append(sem)
+            # 解析 option 标签
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for option in soup.find_all("option"):
+                sem_id = option.get("value", "").strip()
+                if sem_id and sem_id.isdigit():
+                    sem = {"id": sem_id, "name": option.get_text(strip=True)}
+                    if sem_id == current:
+                        sem["current"] = True
+                    semesters.append(sem)
             
-            if not semesters:
-                semesters = self.DEFAULT_SEMESTERS.copy()
-                if current:
-                    for sem in semesters:
-                        if sem["id"] == current:
-                            sem["current"] = True
+            # 按学年倒序排列（最新的在前面）
+            semesters.reverse()
             
             return {
                 "success": True,
@@ -92,12 +81,12 @@ class SemesterService:
             return {
                 "success": False,
                 "error": str(e),
-                "semesters": self.DEFAULT_SEMESTERS,
+                "semesters": [],
             }
     
     def get_info(self) -> Dict:
         """获取学期详细信息"""
-        current_id = self.get_current_id() or "209"
+        current_id = self.get_current_id()
         available = self.get_available()
         
         return {

@@ -10,6 +10,7 @@ from .user import UserService
 from .semester import SemesterService
 from .course import CourseService
 from .grade import GradeService
+from .exam import ExamService
 
 
 class JwxtClient:
@@ -86,3 +87,11 @@ class JwxtClient:
         
         service = GradeService(self.session)
         return service.get_grades(semester_id)
+    
+    def get_exams(self, semester_id: str = None) -> Dict:
+        """获取考试安排"""
+        if not self._ensure_session():
+            return {"success": False, "error": "未登录"}
+        
+        service = ExamService(self.session)
+        return service.get_exams(semester_id)
