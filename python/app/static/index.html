@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>西外教务 API 测试</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102,126,234,0.4); }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+        .btn-danger:hover { background: #ee5a5a; }
+        .result-box {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            max-height: 500px;
+            overflow: auto;
+        }
+        .result-box pre {
+            color: #d4d4d4;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.loading { background: #fff3cd; color: #856404; }
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .api-info { font-size: 12px; color: #888; margin-top: 10px; }
+        .json-key { color: #9cdcfe; }
+        .json-string { color: #ce9178; }
+        .json-number { color: #b5cea8; }
+        .json-boolean { color: #569cd6; }
+        .json-null { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 西外教务 API 测试</h1>
+        
+        <div class="grid">
+            <div>
+                <div class="card">
+                    <h2>🔐 登录凭证</h2>
+                    <div class="form-group">
+                        <label>学号</label>
+                        <input type="text" id="username" placeholder="请输入学号">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="password" placeholder="请输入密码">
+                    </div>
+                    <div class="form-group">
+                        <label>学期 ID（可选）</label>
+                        <input type="text" id="semester_id" placeholder="如: 209">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2>🚀 API 接口</h2>
+                    <div class="btn-group">
+                        <button class="btn-primary" onclick="callApi('login')">登录</button>
+                        <button class="btn-primary" onclick="callApi('user')">用户信息</button>
+                        <button class="btn-primary" onclick="callApi('semester')">学期信息</button>
+                        <button class="btn-primary" onclick="callApi('course')">课程表</button>
+                        <button class="btn-primary" onclick="callApi('grade')">成绩</button>
+                    </div>
+                    
+                    <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+                        <h3 style="font-size: 14px; color: #666; margin-bottom: 10px;">缓存管理</h3>
+                        <div class="btn-group">
+                            <button class="btn-secondary" onclick="callApi('cache/stats')">缓存统计</button>
+                            <button class="btn-secondary" onclick="callApi('cache/info')">缓存详情</button>
+                            <button class="btn-danger" onclick="clearCache()">清空缓存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📋 响应结果 <span id="status"></span></h2>
+                <div class="api-info" id="api-info"></div>
+                <div class="result-box">
+                    <pre id="result">点击左侧按钮测试 API...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        
+        function getParams() {
+            return {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                semester_id: document.getElementById('semester_id').value
+            };
+        }
+        
+        function setStatus(type, text) {
+            const el = document.getElementById('status');
+            el.className = 'status ' + type;
+            el.innerHTML = type === 'loading' 
+                ? '<span class="loading-spinner"></span>' + text 
+                : text;
+        }
+        
+        function formatJson(obj) {
+            const json = JSON.stringify(obj, null, 2);
+            return json
+                .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+                .replace(/: "([^"]*)"/g, ': <span class="json-string">"$1"</span>')
+                .replace(/: (\d+)/g, ': <span class="json-number">$1</span>')
+                .replace(/: (true|false)/g, ': <span class="json-boolean">$1</span>')
+                .replace(/: null/g, ': <span class="json-null">null</span>');
+        }
+        
+        async function callApi(endpoint) {
+            const params = getParams();
+            const resultEl = document.getElementById('result');
+            const infoEl = document.getElementById('api-info');
+            
+            if (!endpoint.startsWith('cache') && (!params.username || !params.password)) {
+                alert('请输入学号和密码');
+                return;
+            }
+            
+            setStatus('loading', '请求中...');
+            
+            let url = `${API_BASE}/${endpoint}?`;
+            if (!endpoint.startsWith('cache')) {
+                url += `username=${encodeURIComponent(params.username)}&password=${encodeURIComponent(params.password)}`;
+                if (params.semester_id && ['course', 'grade'].includes(endpoint)) {
+                    url += `&semester_id=${encodeURIComponent(params.semester_id)}`;
+                }
+            }
+            
+            const startTime = Date.now();
+            infoEl.textContent = `GET ${url.replace(/password=[^&]+/, 'password=***')}`;
+            
+            try {
+                const resp = await fetch(url);
+                const data = await resp.json();
+                const elapsed = Date.now() - startTime;
+                
+                resultEl.innerHTML = formatJson(data);
+                infoEl.textContent += ` (${elapsed}ms)`;
+                
+                setStatus(data.success ? 'success' : 'error', data.success ? '成功' : '失败');
+            } catch (e) {
+                resultEl.textContent = `请求失败: ${e.message}`;
+                setStatus('error', '错误');
+            }
+        }
+        
+        async function clearCache() {
+            if (!confirm('确定要清空所有缓存吗？')) return;
+            
+            setStatus('loading', '清空中...');
+            
+            try {
+                const resp = await fetch(`${API_BASE}/cache/clear`, { method: 'POST' });
+                const data = await resp.json();
+                document.getElementById('result').innerHTML = formatJson(data);
+                setStatus('success', '已清空');
+            } catch (e) {
+                document.getElementById('result').textContent = `请求失败: ${e.message}`;
+                setStatus('error', '错误');
+            }
+        }
+        
+        // 从 localStorage 恢复
+        const saved = localStorage.getItem('jwxt_test_creds');
+        if (saved) {
+            try {
+                const { username } = JSON.parse(saved);
+                document.getElementById('username').value = username || '';
+            } catch {}
+        }
+        
+        // 保存用户名
+        document.getElementById('username').addEventListener('blur', function() {
+            localStorage.setItem('jwxt_test_creds', JSON.stringify({ username: this.value }));
+        });
+    </script>
+</body>
+</html>

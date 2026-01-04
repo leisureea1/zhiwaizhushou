@@ -1,13 +1,13 @@
 {
-  "a2378585cb00a857f11466e0ef835d41": {
+  "30a4a0c39f4c178df56ca27b5e5ee0f0": {
     "username": "107242024000080",
     "cookies": {
-      "JSESSIONID": "MOCK_SESSION_ID_12345",
-      "iPlanetDirectoryPro": "MOCK_TOKEN",
-      "route": "mock_server"
+      "GSESSIONID": "DD9C72FA4B00177AD39380FADFFD92D2",
+      "JSESSIONID": "DD9C72FA4B00177AD39380FADFFD92D2",
+      "TGC": "TGT-18591-pZGPP3WMCJ0-MpUM6X-51OWbidUip96nxu9tw1DYwnWq4V9Zm1ULUhXb4xJsE6Jc9bocas-server-webapp-78bb89ff7d-8k7h2"
     },
-    "created_at": 1762172318.3600965,
-    "last_used": 1762172318.3600965,
-    "hit_count": 0
+    "created_at": 1767529427.6022139,
+    "last_used": 1767529681.863647,
+    "hit_count": 7
   }
 }
