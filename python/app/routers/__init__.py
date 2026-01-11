@@ -9,6 +9,7 @@ from .semester import router as semester_router
 from .user import router as user_router
 from .cache import router as cache_router
 from .exam import router as exam_router
+from .evaluation import router as evaluation_router
 
 __all__ = [
     "auth_router",
@@ -17,5 +18,7 @@ __all__ = [
     "semester_router",
     "user_router",
     "cache_router",
-    "exam_router"
+    "exam_router",
+    "evaluation_router"
 ]
+

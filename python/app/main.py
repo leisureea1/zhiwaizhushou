@@ -20,7 +20,8 @@ from .routers import (
     semester_router,
     user_router,
     cache_router,
-    exam_router
+    exam_router,
+    evaluation_router
 )
 
 # 配置日志
@@ -45,6 +46,7 @@ app.include_router(semester_router)
 app.include_router(user_router)
 app.include_router(cache_router)
 app.include_router(exam_router)
+app.include_router(evaluation_router)
 
 # 静态文件
 static_dir = Path(__file__).parent / "static"
