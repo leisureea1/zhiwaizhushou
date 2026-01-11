@@ -214,4 +214,42 @@ class JwxtApiService {
         $result = $this->callFastAPI('exam', $params);
         return $this->extractData($result);
     }
+
+    /**
+     * 获取待评教课程列表
+     *
+     * @param string $username 学号
+     * @param string $password 密码
+     * @return array
+     */
+    public function getPendingEvaluations($username, $password) {
+        $params = [
+            'username' => $username,
+            'password' => $password
+        ];
+        
+        $result = $this->callFastAPI('evaluation/pending', $params);
+        return $this->extractData($result);
+    }
+
+    /**
+     * 一键评教所有待评课程
+     *
+     * @param string $username 学号
+     * @param string $password 密码
+     * @param int $choice 评价选项 (0=完全符合, 1=符合, 2=基本符合, 3=基本不符合, 4=完全不符合)
+     * @param string $comment 意见建议
+     * @return array
+     */
+    public function autoEvaluateAll($username, $password, $choice = 0, $comment = '无') {
+        $params = [
+            'username' => $username,
+            'password' => $password,
+            'choice' => $choice,
+            'comment' => $comment
+        ];
+        
+        $result = $this->callFastAPI('evaluation/auto', $params);
+        return $this->extractData($result);
+    }
 }

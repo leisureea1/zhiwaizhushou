@@ -29,7 +29,7 @@ export default class IndexPage extends Component<any, IndexState> {
       { name: '失物招领', action: 'lost', color: '#2563eb' },
       { name: '通勤车', action: 'bus', color: '#1d4ed8' },
       { name: '饿了么红包', action: 'eleme', color: '#a16207' },
-      { name: '美团红包', action: 'coupon', color: '#ca8a04' },
+      { name: '量化评教', action: 'evaluation', color: '#10b981' },
       { name: '本科招生', action: 'admission', color: '#dc2626' }
     ],
     // 公告数据
@@ -179,6 +179,11 @@ export default class IndexPage extends Component<any, IndexState> {
         Taro.setClipboardData({ data: 'https://to.ele.me/AK.je6ShmmM?alsc_exsrc=ch_app_chsub_wordlink' })
           .then(()=> Taro.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }))
           .catch(()=> Taro.showToast({ title: '复制失败，请重试', icon: 'none' }))
+        break
+      case 'evaluation':
+        Taro.navigateTo({
+          url: '/pages/evaluation/index'
+        })
         break
       default:
         this.showComingSoon(app.name)

@@ -79,3 +79,7 @@ $router->add('GET', '/api/admin/features/list', 'AdminFeatureController@getFeatu
 $router->add('POST', '/api/admin/features/update', 'AdminFeatureController@updateFeature');
 $router->add('POST', '/api/admin/features/toggle', 'AdminFeatureController@toggleFeature');
 
+// 评教相关路由
+$router->add('GET', '/api/evaluation/pending', 'EvaluationController@getPending');
+$router->add('GET', '/api/evaluation/auto', 'EvaluationController@autoEvaluate');
+

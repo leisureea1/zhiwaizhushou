@@ -1,0 +1,209 @@
+.evaluation-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 88rpx 32rpx 24rpx;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+    .nav-back {
+      width: 64rpx;
+      height: 64rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .back-icon {
+        font-size: 48rpx;
+        color: white;
+        font-weight: bold;
+      }
+    }
+
+    .nav-title {
+      font-size: 36rpx;
+      color: white;
+      font-weight: 600;
+    }
+
+    .nav-placeholder {
+      width: 64rpx;
+    }
+  }
+
+  .status-card {
+    margin: -20rpx 32rpx 24rpx;
+    padding: 48rpx 32rpx;
+    background: white;
+    border-radius: 24rpx;
+    box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .status-icon-wrap {
+      width: 120rpx;
+      height: 120rpx;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24rpx;
+
+      .status-icon {
+        font-size: 48rpx;
+        font-weight: bold;
+
+        &.completed {
+          background: #d1fae5;
+          color: #10b981;
+          width: 120rpx;
+          height: 120rpx;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        &.pending {
+          background: #fef3c7;
+          color: #f59e0b;
+          width: 120rpx;
+          height: 120rpx;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+
+    .status-text {
+      font-size: 32rpx;
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .retry-btn {
+      margin-top: 16rpx;
+      font-size: 28rpx;
+      color: #3b82f6;
+    }
+  }
+
+  .course-list {
+    flex: 1;
+    padding: 0 32rpx;
+
+    .course-item {
+      display: flex;
+      align-items: center;
+      padding: 28rpx 24rpx;
+      background: white;
+      border-radius: 16rpx;
+      margin-bottom: 16rpx;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+      .course-index {
+        width: 48rpx;
+        height: 48rpx;
+        border-radius: 50%;
+        background: #f3f4f6;
+        color: #6b7280;
+        font-size: 24rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 20rpx;
+        flex-shrink: 0;
+      }
+
+      .course-info {
+        flex: 1;
+        min-width: 0;
+
+        .course-name {
+          font-size: 30rpx;
+          color: #111827;
+          font-weight: 500;
+          display: block;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .course-meta {
+          font-size: 24rpx;
+          color: #9ca3af;
+          margin-top: 8rpx;
+          display: block;
+        }
+      }
+
+      .course-status {
+        padding: 8rpx 20rpx;
+        border-radius: 20rpx;
+        font-size: 24rpx;
+        flex-shrink: 0;
+
+        &.pending {
+          background: #fef3c7;
+          color: #d97706;
+        }
+
+        &.completed {
+          background: #d1fae5;
+          color: #059669;
+        }
+      }
+    }
+
+    .empty-tip {
+      padding: 80rpx 0;
+      text-align: center;
+
+      .empty-text {
+        font-size: 32rpx;
+        color: #6b7280;
+      }
+    }
+  }
+
+  .bottom-action {
+    padding: 24rpx 32rpx 48rpx;
+    background: white;
+    box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.04);
+
+    .action-btn {
+      height: 96rpx;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-radius: 48rpx;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &.disabled {
+        opacity: 0.6;
+      }
+
+      .btn-text {
+        font-size: 32rpx;
+        color: white;
+        font-weight: 600;
+      }
+    }
+
+    .action-tip {
+      display: block;
+      text-align: center;
+      margin-top: 16rpx;
+      font-size: 24rpx;
+      color: #9ca3af;
+    }
+  }
+}

@@ -892,6 +892,29 @@ function handle_api_request($path, $method) {
             }
             break;
 
+        // 评教相关路由
+        case 'evaluation/pending':
+            if ($method === 'GET') {
+                require_once ROOT_PATH . '/app/Controllers/EvaluationController.php';
+                $controller = new EvaluationController();
+                $controller->getPending();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+            
+        case 'evaluation/auto':
+            if ($method === 'GET') {
+                require_once ROOT_PATH . '/app/Controllers/EvaluationController.php';
+                $controller = new EvaluationController();
+                $controller->autoEvaluate();
+            } else {
+                http_response_code(405);
+                echo json_encode(['error' => '方法不允许']);
+            }
+            break;
+
         default:
             json_response(['error' => '接口不存在'], 404);
             break;

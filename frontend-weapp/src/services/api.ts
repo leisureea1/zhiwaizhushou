@@ -57,7 +57,7 @@ class ApiService {
       }
 
       // 去重 key（不包含 headers，避免 Authorization 差异导致无法合并；默认一个端同一时刻仅有一个登录用户）
-      const dedupeKey = `${method} ${url} ${this.stableStringify(data)}`
+      const dedupeKey = `${method} ${BASE_URL}${url} ${this.stableStringify(data)}`
       if (this.inflight.has(dedupeKey)) {
         return (this.inflight.get(dedupeKey) as Promise<any>) as Promise<T>
       }
@@ -90,7 +90,7 @@ class ApiService {
   }
 
   // ==================== 用户认证相关 ====================
-  
+
   /**
    * 用户注册
    * @param username 用户自定义的用户名
@@ -239,11 +239,11 @@ class ApiService {
   async getCourseSchedule(semesterId?: string, weekNumber?: number) {
     // 从本地存储获取用户信息
     const userInfo = Taro.getStorageSync('userInfo')
-    
+
     if (!userInfo || !userInfo.eduUsername || !userInfo.eduPassword) {
       throw new Error('请先登录')
     }
-    
+
     // 构建请求参数，过滤掉 undefined 值
     const data: Record<string, any> = {
       username: userInfo.eduUsername,
@@ -255,7 +255,7 @@ class ApiService {
     if (weekNumber !== undefined && weekNumber !== null) {
       data.week_number = weekNumber
     }
-    
+
     return this.request({
       url: '/api/course/schedule',
       method: 'GET',
@@ -274,7 +274,7 @@ class ApiService {
     if (semesterId !== undefined && semesterId !== null) {
       data.semester_id = semesterId
     }
-    
+
     return this.request({
       url: '/api/course/grades',
       method: 'GET',
@@ -302,11 +302,11 @@ class ApiService {
    */
   async getExams(semesterId?: string) {
     const userInfo = Taro.getStorageSync('userInfo')
-    
+
     if (!userInfo || !userInfo.eduUsername || !userInfo.eduPassword) {
       throw new Error('请先登录')
     }
-    
+
     const data: Record<string, any> = {
       username: userInfo.eduUsername,
       password: userInfo.eduPassword
@@ -314,7 +314,7 @@ class ApiService {
     if (semesterId !== undefined && semesterId !== null) {
       data.semester_id = semesterId
     }
-    
+
     return this.request({
       url: '/api/course/exams',
       method: 'GET',
@@ -386,13 +386,13 @@ class ApiService {
     if (params?.q) {
       queryParts.push(`q=${encodeURIComponent(params.q)}`)
     }
-    
+
     return this.request({
       url: `/api/flea-market?${queryParts.join('&')}`,
       method: 'GET'
     })
   }
-  
+
   async getFleaMarketDetail(id: string) {
     const userInfo = Taro.getStorageSync('userInfo') || {}
     const userId = userInfo.userId || userInfo.uid
@@ -446,12 +446,12 @@ class ApiService {
   /**
    * 获取失物招领列表
    */
-  async getLostFoundList(params?: { page?: number; limit?: number; status?: string; q?: string; publisher_uid?: string|number; category?: string }) {
+  async getLostFoundList(params?: { page?: number; limit?: number; status?: string; q?: string; publisher_uid?: string | number; category?: string }) {
     const queryParts = [
       `page=${params?.page || 1}`,
       `limit=${params?.limit || 10}`
     ]
-    
+
     if (params?.status) {
       queryParts.push(`status=${params.status}`)
     }
@@ -464,13 +464,13 @@ class ApiService {
     if (params?.category) {
       queryParts.push(`category=${encodeURIComponent(params.category)}`)
     }
-    
+
     return this.request({
       url: `/api/lost-found?${queryParts.join('&')}`,
       method: 'GET'
     })
   }
-  
+
   async getLostFoundDetail(id: string) {
     return this.request({
       url: `/api/lost-found?id=${id}`,
@@ -498,15 +498,15 @@ class ApiService {
     return this.request({ url: `/api/lost-found/update?id=${id}`, method: 'POST', data: body, needAuth: true })
   }
 
-    async deleteLostFoundItem(id: string, userId?: string|number) {
-    const uid = userId || (Taro.getStorageSync('userInfo')||{}).userId || (Taro.getStorageSync('userInfo')||{}).uid
+  async deleteLostFoundItem(id: string, userId?: string | number) {
+    const uid = userId || (Taro.getStorageSync('userInfo') || {}).userId || (Taro.getStorageSync('userInfo') || {}).uid
     return this.request({ url: `/api/lost-found/delete?id=${id}&user_id=${uid}`, method: 'POST', needAuth: true })
   }
 
   /**
    * 更新用户活跃状态（小程序启动时调用）
    */
- 
+
   async updateUserActivity(userId: string | number) {
     return this.request({
       url: '/api/user/update-activity',
@@ -525,6 +525,48 @@ class ApiService {
       url: '/api/feature/settings',
       method: 'GET',
       needAuth: false
+    })
+  }
+
+  // ==================== 量化评教相关 ====================
+
+  /**
+   * 获取待评教课程列表
+   */
+  async getPendingEvaluations() {
+    const userInfo = Taro.getStorageSync('userInfo')
+    if (!userInfo || !userInfo.eduUsername || !userInfo.eduPassword) {
+      throw new Error('请先登录')
+    }
+    return this.request({
+      url: '/api/evaluation/pending',
+      method: 'GET',
+      data: {
+        username: userInfo.eduUsername,
+        password: userInfo.eduPassword
+      },
+      needAuth: true
+    })
+  }
+
+  /**
+   * 一键评教所有待评课程
+   */
+  async autoEvaluateAll(choice: number = 0, comment: string = '无') {
+    const userInfo = Taro.getStorageSync('userInfo')
+    if (!userInfo || !userInfo.eduUsername || !userInfo.eduPassword) {
+      throw new Error('请先登录')
+    }
+    return this.request({
+      url: '/api/evaluation/auto',
+      method: 'GET',
+      data: {
+        username: userInfo.eduUsername,
+        password: userInfo.eduPassword,
+        choice,
+        comment
+      },
+      needAuth: true
     })
   }
 }
