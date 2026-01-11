@@ -24,14 +24,15 @@ class AdminUserController {
 
         try {
             $rows = User::getAllUsers($limit, $offset);
-            // 简化：总数用当前页数量（如需精准总数，可添加 User::getCount）
+            $total = User::getCount();
             $this->jsonResponse([
                 'success' => true,
                 'data' => $rows,
                 'pagination' => [
                     'page' => $page,
                     'limit' => $limit,
-                    'total' => count($rows)
+                    'total' => $total,
+                    'totalPages' => ceil($total / $limit)
                 ]
             ]);
         } catch (Exception $e) {

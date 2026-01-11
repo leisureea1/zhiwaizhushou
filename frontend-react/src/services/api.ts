@@ -390,9 +390,9 @@ class ApiService {
     }
   }
 
-  // 用户管理相关API - 后端暂未实现，使用模拟数据
-  static async getUserList() {
-    const res = await this.request(`${API_BASE_URL}/api/admin/users/list`, {
+  // 用户管理相关API
+  static async getUserList(page: number = 1, limit: number = 20) {
+    const res = await this.request(`${API_BASE_URL}/api/admin/users/list?page=${page}&limit=${limit}`, {
       credentials: 'include',
     });
     return res.json();
@@ -477,10 +477,10 @@ class ApiService {
   }
 
   // 获取用户列表（用于前端组件）
-  static async getUsers() {
+  static async getUsers(page: number = 1, limit: number = 20) {
     try {
-      const data = await this.getUserList();
-      return (data.data || []).map((u: any) => ({
+      const response = await this.getUserList(page, limit);
+      const users = (response.data || []).map((u: any) => ({
         id: String(u.uid),
         username: u.username || '',
         name: u.name || '',
@@ -491,9 +491,13 @@ class ApiService {
         lastLoginAt: u.last_login_at || null,
         lastLoginIp: u.last_login_ip || null,
       }));
+      return {
+        data: users,
+        pagination: response.pagination || { page: 1, limit: 20, total: users.length, totalPages: 1 }
+      };
     } catch (error) {
       console.error('获取用户列表失败:', error);
-      return [];
+      return { data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } };
     }
   }
 

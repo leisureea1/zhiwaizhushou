@@ -140,4 +140,13 @@ class User {
         $sql = "DELETE FROM users WHERE uid = ?";
         return DatabaseConfig::delete($sql, [$uid]);
     }
+
+    /**
+     * 获取用户总数
+     */
+    public static function getCount() {
+        $stmt = DatabaseConfig::query("SELECT COUNT(*) as total FROM users");
+        $result = $stmt->fetch();
+        return (int)($result['total'] ?? 0);
+    }
 }

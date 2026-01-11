@@ -17,7 +17,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from './ui/dialog';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -28,14 +27,9 @@ import {
   Trash2, 
   Filter,
   Download,
-  MoreHorizontal
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
 import ApiService from '../services/api';
 
 interface User {
@@ -71,17 +65,27 @@ export function UserManagement() {
     password: '', // 新增：小程序登录密码
     role: 'user',
   });
+  
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const pageSize = 20;
 
   // 获取用户数据
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(currentPage);
+  }, [currentPage]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page: number) => {
     try {
       setLoading(true);
-      const data = await ApiService.getUsers();
-      setUsers(data);
+      const result = await ApiService.getUsers(page, pageSize);
+      setUsers(result.data || []);
+      if (result.pagination) {
+        setTotalPages(result.pagination.totalPages || 1);
+        setTotalUsers(result.pagination.total || 0);
+      }
     } catch (error) {
       console.error('获取用户数据失败:', error);
       setUsers([]);
@@ -138,21 +142,11 @@ export function UserManagement() {
       await ApiService.updateUser(selectedUser.id, editForm);
       alert('用户信息更新成功');
       setIsEditOpen(false);
-      await fetchUsers();
+      await fetchUsers(currentPage);
     } catch (error: any) {
       console.error('更新用户失败:', error);
       const errorMessage = error?.response?.data?.error || error?.message || '更新用户失败';
       alert(errorMessage);
-    }
-  };
-
-  const handleToggleRole = async (user: User) => {
-    try {
-      const newRole = user.role === 'admin' ? 'user' : 'admin';
-      await ApiService.updateUserRole(user.id, newRole);
-      await fetchUsers();
-    } catch (error) {
-      console.error('更新用户角色失败:', error);
     }
   };
 
@@ -161,11 +155,24 @@ export function UserManagement() {
     try {
       await ApiService.deleteUser(userId);
       alert('用户删除成功');
-      await fetchUsers();
+      await fetchUsers(currentPage);
     } catch (error: any) {
       console.error('删除用户失败:', error);
       const errorMessage = error?.response?.data?.error || error?.message || '删除用户失败';
       alert(errorMessage);
+    }
+  };
+
+  // 分页处理
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
   };
 
@@ -272,6 +279,35 @@ export function UserManagement() {
             </div>
           )}
         </CardContent>
+        
+        {/* 分页控件 */}
+        {!loading && totalPages > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="text-sm text-gray-500">
+              共 {totalUsers} 个用户，第 {currentPage} / {totalPages} 页
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={currentPage <= 1}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                上一页
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={currentPage >= totalPages}
+              >
+                下一页
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* 查看用户详情弹窗 */}
