@@ -1,0 +1,134 @@
+.chat-page {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-container {
+  flex: 1;
+  padding: 24px;
+  padding-bottom: 160px;
+}
+
+.message-wrapper {
+  display: flex;
+  margin-bottom: 24px;
+  
+  &.user {
+    justify-content: flex-end;
+  }
+  
+  &.assistant {
+    justify-content: flex-start;
+  }
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 24px;
+  border-radius: 24px;
+  font-size: 26px;
+  line-height: 1.5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  
+  &.user {
+    background: #3b82f6;
+    color: #ffffff;
+    border-bottom-right-radius: 8px;
+  }
+  
+  &.assistant {
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid #f1f5f9;
+    border-bottom-left-radius: 8px;
+  }
+  
+  &.loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 32px;
+    
+    .dot {
+      width: 16px;
+      height: 16px;
+      background: #3b82f6;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out both;
+      
+      &:nth-child(1) {
+        animation-delay: -0.32s;
+      }
+      
+      &:nth-child(2) {
+        animation-delay: -0.16s;
+      }
+    }
+  }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+.input-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  padding: 24px;
+  padding-bottom: calc(24px + constant(safe-area-inset-bottom));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 48px;
+  border: 1px solid #e5e7eb;
+  padding: 8px 8px 8px 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.chat-input {
+  flex: 1;
+  height: 72px;
+  font-size: 26px;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.send-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  transition: all 0.2s;
+  
+  .iconfont {
+    font-size: 32px;
+    color: #9ca3af;
+  }
+  
+  &.active {
+    background: #3b82f6;
+    
+    .iconfont {
+      color: #ffffff;
+    }
+  }
+}

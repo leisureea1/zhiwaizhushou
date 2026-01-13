@@ -1,0 +1,232 @@
+.grades-page {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  padding-bottom: 48px;
+}
+
+.main-content {
+  padding: 32px;
+}
+
+.gpa-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-radius: 32px;
+  padding: 48px;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  margin-bottom: 32px;
+}
+
+.gpa-bg-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  filter: blur(40px);
+  
+  &.top {
+    top: -32px;
+    right: -32px;
+    width: 200px;
+    height: 200px;
+  }
+  
+  &.bottom {
+    bottom: -32px;
+    left: -32px;
+    width: 160px;
+    height: 160px;
+  }
+}
+
+.gpa-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.gpa-item {
+  text-align: center;
+}
+
+.gpa-label {
+  font-size: 24px;
+  color: #bfdbfe;
+  margin-bottom: 8px;
+}
+
+.gpa-value {
+  font-size: 72px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.gpa-divider {
+  width: 2px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.term-selector {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+  margin-bottom: 32px;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.term-btn {
+  flex: none;
+  padding: 20px 32px;
+  border-radius: 32px;
+  font-size: 24px;
+  font-weight: 500;
+  white-space: nowrap;
+  
+  &.active {
+    background: #1e293b;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  &.inactive {
+    background: #ffffff;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+  }
+}
+
+.grades-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.grade-card {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grade-left-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  
+  &.blue { background: #3b82f6; }
+  &.pink { background: #ec4899; }
+  &.purple { background: #a855f7; }
+  &.orange { background: #f97316; }
+  &.green { background: #22c55e; }
+}
+
+.grade-info {
+  display: flex;
+  align-items: flex-start;
+  padding-left: 16px;
+}
+
+.grade-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24px;
+  
+  .iconfont {
+    font-size: 40px;
+  }
+  
+  &.blue {
+    background: #dbeafe;
+    .iconfont { color: #3b82f6; }
+  }
+  
+  &.pink {
+    background: #fce7f3;
+    .iconfont { color: #ec4899; }
+  }
+  
+  &.purple {
+    background: #f3e8ff;
+    .iconfont { color: #a855f7; }
+  }
+  
+  &.orange {
+    background: #ffedd5;
+    .iconfont { color: #f97316; }
+  }
+  
+  &.green {
+    background: #dcfce7;
+    .iconfont { color: #22c55e; }
+  }
+}
+
+.grade-details {
+  .grade-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 8px;
+  }
+  
+  .grade-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .grade-type {
+    font-size: 22px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+  
+  .grade-credit {
+    font-size: 22px;
+    color: #6b7280;
+  }
+}
+
+.grade-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  
+  .score-value {
+    font-size: 40px;
+    font-weight: 700;
+    
+    &.blue { color: #3b82f6; }
+    &.pink { color: #ec4899; }
+    &.purple { color: #a855f7; }
+    &.orange { color: #f97316; }
+    &.green { color: #22c55e; }
+  }
+  
+  .score-gpa {
+    font-size: 22px;
+    color: #9ca3af;
+    margin-top: 4px;
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Zhiwai Assistant",
+  "description": "A comprehensive university student companion app featuring class schedules, grade queries, exam countdowns, campus bus tracking, and an AI assistant.",
+  "requestFramePermissions": []
+}
