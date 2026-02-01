@@ -1,19 +1,19 @@
-"""
-成绩路由
+﻿"""
+成绩路由 - Token 认证模式
 """
 
 import time
 import logging
-import traceback
-from typing import Optional
-from fastapi import APIRouter, Query
+from typing import Optional, Tuple
+from fastapi import APIRouter, Query, Depends
 from fastapi.responses import JSONResponse
+import requests
 
-from ..services.auth_service import AuthService
+from ..services.dependencies import require_auth
+from ..core.grade import GradeService
 
 router = APIRouter(tags=["成绩"])
 logger = logging.getLogger(__name__)
-auth_service = AuthService()
 
 
 def make_response(success: bool, data=None, error=None):
@@ -26,32 +26,28 @@ def make_response(success: bool, data=None, error=None):
 
 
 @router.get("/grade")
-async def grade(
-    username: str = Query(...),
-    password: str = Query(...),
-    semester_id: Optional[str] = Query(None)
+async def get_grades(
+    semester_id: Optional[str] = Query(None, description="学期ID，不传则获取全部"),
+    auth: Tuple[requests.Session, dict, str] = Depends(require_auth)
 ):
-    """获取成绩"""
+    """
+    获取成绩
+    
+    需要 Authorization: Bearer <token> 认证
+    """
+    session, user_info, token = auth
     t0 = time.time()
+    
     try:
-        client, info = auth_service.get_client(username, password)
-        if not info.get("success"):
-            return make_response(False, error=info.get("error"))
-        
-        grades = client.get_grades(semester_id)
-        
-        # 会话失效重试
-        if not grades.get("success") and auth_service.looks_like_session_invalid(grades):
-            logger.warning("[/grade] Session expired, retry...")
-            auth_service.invalidate(username, password)
-            client, _ = auth_service.get_client(username, password)
-            grades = client.get_grades(semester_id)
+        grade_service = GradeService(session)
+        grades = grade_service.get_grades(semester_id)
         
         if not grades.get("success"):
             return make_response(False, error=grades.get("error"), data=grades)
         
         logger.info(f"[/grade] Done in {time.time()-t0:.2f}s")
         return make_response(True, data=grades)
+        
     except Exception as e:
         logger.error(f"[/grade] Error: {e}")
-        return make_response(False, error=str(e) + "\n" + traceback.format_exc())
+        return make_response(False, error=str(e))

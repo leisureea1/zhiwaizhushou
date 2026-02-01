@@ -41,7 +41,10 @@ class CourseService:
                 headers=headers, data=data, timeout=15
             )
             
-            courses = self._parse_courses(resp.text)
+            raw_courses = self._parse_courses(resp.text)
+            
+            # 转换为前端期望的格式
+            courses = self._convert_to_frontend_format(raw_courses)
             
             return {
                 "success": True,
@@ -51,6 +54,37 @@ class CourseService:
             }
         except Exception as e:
             return {"success": False, "error": str(e), "courses": []}
+    
+    def _convert_to_frontend_format(self, raw_courses: List[Dict]) -> List[Dict]:
+        """将课程数据转换为前端期望的格式"""
+        result = []
+        for course in raw_courses:
+            time_slots = course.get("time_slots", [])
+            
+            # 按星期分组时间槽
+            day_groups = {}
+            for slot in time_slots:
+                day = slot.get("weekday_index", 1)
+                if day not in day_groups:
+                    day_groups[day] = []
+                day_groups[day].append(slot.get("period", 1))
+            
+            # 为每一天创建一个课程项
+            for weekday, periods in day_groups.items():
+                if not periods:
+                    continue
+                periods = sorted(periods)
+                result.append({
+                    "name": course.get("course_name", ""),
+                    "teacher": course.get("teacher_name", ""),
+                    "classroom": course.get("classroom", ""),
+                    "weekday": weekday,
+                    "startSection": min(periods),
+                    "endSection": max(periods),
+                    "weeks": course.get("weeks_display", ""),
+                })
+        
+        return result
     
     def _parse_courses(self, html: str) -> List[Dict]:
         """解析课程数据"""

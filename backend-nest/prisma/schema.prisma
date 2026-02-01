@@ -1,0 +1,269 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// 用户模块
+// ============================================
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+model User {
+  id            String     @id @default(uuid())
+  username      String     @unique
+  email         String?    @unique
+  phone         String?    @unique
+  passwordHash  String     @map("password_hash")
+  studentId     String?    @unique @map("student_id")
+  realName      String?    @map("real_name")
+  nickname      String?
+  avatar        String?
+  college       String?    // 院系
+  major         String?    // 专业
+  className     String?    @map("class_name") // 班级
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+  
+  // 教务系统绑定信息（加密存储）
+  jwxtUsername  String?    @map("jwxt_username")
+  jwxtPassword  String?    @map("jwxt_password") // 加密存储
+  
+  lastLoginAt   DateTime?  @map("last_login_at")
+  lastLoginIp   String?    @map("last_login_ip")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  
+  // 关联
+  refreshTokens   RefreshToken[]
+  announcements   Announcement[]     @relation("AuthorAnnouncements")
+  viewedAnnouncements AnnouncementView[]
+  systemLogs      SystemLog[]
+  notifications   NotificationSetting?
+  
+  @@map("users")
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent   String?  @map("user_agent")
+  ipAddress   String?  @map("ip_address")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// 公告模块
+// ============================================
+
+enum AnnouncementType {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Announcement {
+  id          String             @id @default(uuid())
+  title       String
+  content     String             @db.Text
+  summary     String?
+  type        AnnouncementType   @default(NORMAL)
+  status      AnnouncementStatus @default(DRAFT)
+  isPinned    Boolean            @default(false) @map("is_pinned")
+  isPopup     Boolean            @default(false) @map("is_popup")
+  
+  authorId    String             @map("author_id")
+  author      User               @relation("AuthorAnnouncements", fields: [authorId], references: [id])
+  
+  publishedAt DateTime?          @map("published_at")
+  expiresAt   DateTime?          @map("expires_at")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  
+  // 关联
+  attachments    AnnouncementAttachment[]
+  views          AnnouncementView[]
+  
+  @@index([status, publishedAt])
+  @@index([isPinned])
+  @@map("announcements")
+}
+
+model AnnouncementAttachment {
+  id              String       @id @default(uuid())
+  announcementId  String       @map("announcement_id")
+  announcement    Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  fileName        String       @map("file_name")
+  filePath        String       @map("file_path")
+  fileSize        Int          @map("file_size")
+  mimeType        String       @map("mime_type")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  
+  @@index([announcementId])
+  @@map("announcement_attachments")
+}
+
+model AnnouncementView {
+  id              String       @id @default(uuid())
+  announcementId  String       @map("announcement_id")
+  announcement    Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId          String       @map("user_id")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewedAt        DateTime     @default(now()) @map("viewed_at")
+  
+  @@unique([announcementId, userId])
+  @@map("announcement_views")
+}
+
+// ============================================
+// 系统日志模块
+// ============================================
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum ActionType {
+  LOGIN
+  LOGOUT
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  EXPORT
+  IMPORT
+  OTHER
+}
+
+model SystemLog {
+  id          String     @id @default(uuid())
+  level       LogLevel   @default(INFO)
+  action      ActionType
+  module      String
+  message     String
+  details     Json?
+  
+  userId      String?    @map("user_id")
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  ipAddress   String?    @map("ip_address")
+  userAgent   String?    @map("user_agent")
+  requestPath String?    @map("request_path")
+  requestMethod String?  @map("request_method")
+  responseCode  Int?     @map("response_code")
+  duration    Int?       // 请求耗时（毫秒）
+  
+  createdAt   DateTime   @default(now()) @map("created_at")
+  
+  @@index([level])
+  @@index([action])
+  @@index([module])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+// ============================================
+// 功能开关模块
+// ============================================
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isEnabled   Boolean  @default(true) @map("is_enabled")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("feature_flags")
+}
+
+// ============================================
+// 通知设置模块
+// ============================================
+
+model NotificationSetting {
+  id                String   @id @default(uuid())
+  userId            String   @unique @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  emailEnabled      Boolean  @default(true) @map("email_enabled")
+  pushEnabled       Boolean  @default(true) @map("push_enabled")
+  barkKey           String?  @map("bark_key")
+  
+  gradeNotify       Boolean  @default(true) @map("grade_notify")
+  examNotify        Boolean  @default(true) @map("exam_notify")
+  announcementNotify Boolean @default(true) @map("announcement_notify")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  @@map("notification_settings")
+}
+
+// ============================================
+// 文件上传模块
+// ============================================
+
+model UploadedFile {
+  id          String   @id @default(uuid())
+  fileName    String   @map("file_name")
+  originalName String  @map("original_name")
+  filePath    String   @map("file_path")
+  fileSize    Int      @map("file_size")
+  mimeType    String   @map("mime_type")
+  uploaderId  String?  @map("uploader_id")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("uploaded_files")
+}
+
+// ============================================
+// 缓存键值存储（可选，用于持久化某些缓存）
+// ============================================
+
+model CacheEntry {
+  key         String   @id
+  value       Json
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([expiresAt])
+  @@map("cache_entries")
+}

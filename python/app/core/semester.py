@@ -18,20 +18,23 @@ class SemesterService:
     
     def get_current_id(self) -> Optional[str]:
         """获取当前学期 ID"""
-        # 从 cookie 获取
+        # 1. 从 cookie 获取
         for cookie in self.session.cookies:
             if cookie.name == "semester.id":
                 return cookie.value
         
-        # 从页面提取
+        # 2. 从页面提取
         urls = [
             f"{JWXT_BASE_URL}/eams/courseTableForStd.action",
             f"{JWXT_BASE_URL}/eams/home.action",
+            f"{JWXT_BASE_URL}/eams/teach/grade/course/person!search.action",
         ]
         
         patterns = [
             r'semester\.id["\']?\s*[:=]\s*["\']?(\d+)',
             r'semesterId["\']?\s*[:=]\s*["\']?(\d+)',
+            r'id="semester"[^>]*value="(\d+)"',
+            r'name="semester\.id"[^>]*value="(\d+)"',
         ]
         
         for url in urls:
@@ -43,6 +46,21 @@ class SemesterService:
                         return match.group(1)
             except Exception:
                 continue
+        
+        # 3. 从 dataQuery 接口获取带 selected 标记的学期
+        try:
+            resp = self.session.post(
+                f"{JWXT_BASE_URL}/eams/dataQuery.action",
+                data={"dataType": "semester"},
+                timeout=15
+            )
+            soup = BeautifulSoup(resp.text, "html.parser")
+            # 查找 selected 属性的 option
+            selected = soup.find("option", selected=True)
+            if selected and selected.get("value", "").strip().isdigit():
+                return selected.get("value").strip()
+        except Exception:
+            pass
         
         return None
     
