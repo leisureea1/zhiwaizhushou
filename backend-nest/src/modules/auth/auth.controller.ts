@@ -2,7 +2,7 @@ import { Controller, Post, Body, HttpCode, HttpStatus, Req, UseGuards } from '@n
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshTokenDto, ChangePasswordDto, SendVerificationCodeDto, VerifyEmailCodeDto } from './dto';
+import { RegisterDto, LoginDto, RefreshTokenDto, ChangePasswordDto, SendVerificationCodeDto, VerifyEmailCodeDto, ResetPasswordRequestDto, ResetPasswordConfirmDto } from './dto';
 import { Public } from '@/common/decorators/public.decorator';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -83,5 +83,26 @@ export class AuthController {
   @ApiResponse({ status: 400, description: '旧密码错误' })
   async changePassword(@CurrentUser('id') userId: string, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(userId, dto.oldPassword, dto.newPassword);
+  }
+
+  @Post('forgot-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '发送密码重置验证码' })
+  @ApiResponse({ status: 200, description: '验证码发送成功' })
+  @ApiResponse({ status: 404, description: '邮箱未注册' })
+  @ApiResponse({ status: 400, description: '请勿频繁发送' })
+  async forgotPassword(@Body() dto: ResetPasswordRequestDto) {
+    return this.authService.sendResetPasswordCode(dto.email);
+  }
+
+  @Post('reset-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '重置密码' })
+  @ApiResponse({ status: 200, description: '密码重置成功' })
+  @ApiResponse({ status: 400, description: '验证码错误或已过期' })
+  async resetPassword(@Body() dto: ResetPasswordConfirmDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }

@@ -24,6 +24,7 @@ import { RedisService } from '@/services/redis.service';
 
 // Redis 键前缀
 const VERIFICATION_CODE_PREFIX = 'verify_code:';
+const RESET_PASSWORD_CODE_PREFIX = 'reset_pwd_code:';
 
 @Injectable()
 export class AuthService {
@@ -351,6 +352,97 @@ export class AuthService {
     });
 
     return { message: '密码修改成功，请重新登录' };
+  }
+
+  /**
+   * 发送密码重置验证码
+   */
+  async sendResetPasswordCode(email: string): Promise<{ message: string }> {
+    const redisKey = `${RESET_PASSWORD_CODE_PREFIX}${email}`;
+
+    // 检查邮箱是否已注册
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!existingUser) {
+      throw new BadRequestException('该邮箱未注册');
+    }
+
+    // 检查是否频繁发送（60秒内只能发送一次）
+    const ttl = await this.redisService.ttl(redisKey);
+    if (ttl > 540) {
+      // 剩余时间超过9分钟，说明是60秒内发送的
+      throw new BadRequestException('请勿频繁发送验证码，请60秒后再试');
+    }
+
+    // 生成6位验证码
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 保存验证码到 Redis（10分钟 = 600秒）
+    await this.redisService.set(redisKey, code, 600);
+
+    // 发送邮件
+    const success = await this.mailService.sendPasswordReset(email, code);
+    if (!success) {
+      throw new BadRequestException('验证码发送失败，请稍后再试');
+    }
+
+    this.logger.log(`Reset password code sent to ${email}`);
+    return { message: '验证码已发送，请查收邮件' };
+  }
+
+  /**
+   * 重置密码
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    // 从 token 中解析邮箱和验证码
+    let decoded: { email: string; code: string };
+    try {
+      decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+    } catch {
+      throw new BadRequestException('无效的重置令牌');
+    }
+
+    const { email, code } = decoded;
+    const redisKey = `${RESET_PASSWORD_CODE_PREFIX}${email}`;
+
+    // 验证验证码
+    const storedCode = await this.redisService.get(redisKey);
+    if (!storedCode) {
+      throw new BadRequestException('验证码不存在或已过期，请重新获取');
+    }
+
+    if (storedCode !== code) {
+      throw new BadRequestException('验证码错误');
+    }
+
+    // 查找用户
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new BadRequestException('用户不存在');
+    }
+
+    // 更新密码
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    // 删除验证码
+    await this.redisService.del(redisKey);
+
+    // 删除所有刷新令牌，强制重新登录
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId: user.id },
+    });
+
+    this.logger.log(`Password reset for user: ${user.username}`);
+    return { message: '密码重置成功，请使用新密码登录' };
   }
 
   private async generateTokens(userId: string, username: string, role: string) {
