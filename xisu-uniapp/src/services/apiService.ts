@@ -3,7 +3,7 @@
  */
 
 // 后端API地址 - NestJS 后端
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.3.24:3000/api/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.xisu.leisureea.cn/api/v1';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObject = Record<string, any>;
@@ -84,7 +84,173 @@ export const getUserInfo = <T = unknown>(): T | null => {
 };
 
 /**
- * 通用请求方法
+ * 获取 Refresh Token
+ */
+export const getRefreshToken = (): string | null => {
+  return uni.getStorageSync('refresh_token') || null;
+};
+
+// Token 刷新状态管理
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+/**
+ * 添加等待刷新的请求到队列
+ */
+const subscribeTokenRefresh = (callback: (token: string) => void) => {
+  refreshSubscribers.push(callback);
+};
+
+/**
+ * 刷新完成后，执行队列中的所有请求
+ */
+const onTokenRefreshed = (newToken: string) => {
+  refreshSubscribers.forEach(callback => callback(newToken));
+  refreshSubscribers = [];
+};
+
+/**
+ * 刷新 Access Token
+ */
+const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    return null;
+  }
+
+  try {
+    console.log('[Token] Attempting to refresh access token...');
+    
+    return new Promise((resolve, reject) => {
+      uni.request({
+        url: `${BASE_URL}/auth/refresh`,
+        method: 'POST',
+        data: { refreshToken },
+        header: { 'Content-Type': 'application/json' },
+        success: (res) => {
+          const statusCode = res.statusCode;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const response = res.data as any;
+          
+          console.log('[Token] Refresh response:', statusCode, JSON.stringify(response));
+          
+          if (statusCode >= 200 && statusCode < 300) {
+            // 处理包装格式响应
+            const data = response.code === 0 ? response.data : response;
+            
+            if (data?.accessToken && data?.refreshToken) {
+              // 保存新的 token
+              saveTokens({
+                accessToken: data.accessToken,
+                refreshToken: data.refreshToken,
+              });
+              console.log('[Token] Token refreshed successfully');
+              resolve(data.accessToken);
+            } else {
+              console.log('[Token] Invalid refresh response data');
+              resolve(null);
+            }
+          } else {
+            console.log('[Token] Refresh failed with status:', statusCode);
+            resolve(null);
+          }
+        },
+        fail: (err) => {
+          console.error('[Token] Refresh request failed:', err);
+          resolve(null);
+        }
+      });
+    });
+  } catch (error) {
+    console.error('[Token] Refresh error:', error);
+    return null;
+  }
+};
+
+/**
+ * 处理 Token 过期 - 尝试刷新或跳转登录
+ */
+const handleTokenExpired = async <T>(options: RequestOptions): Promise<T> => {
+  // 如果正在刷新，等待刷新完成后重试
+  if (isRefreshing) {
+    return new Promise((resolve, reject) => {
+      subscribeTokenRefresh(async (newToken: string) => {
+        try {
+          const result = await requestWithToken<T>(options, newToken);
+          resolve(result);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const newAccessToken = await refreshAccessToken();
+    
+    if (newAccessToken) {
+      // 刷新成功，通知队列中的请求
+      onTokenRefreshed(newAccessToken);
+      // 重试当前请求
+      return await requestWithToken<T>(options, newAccessToken);
+    } else {
+      // 刷新失败，跳转登录
+      console.log('[Token] Refresh failed, redirecting to login...');
+      clearTokens();
+      uni.reLaunch({ url: '/pages/login/index' });
+      throw new Error('登录已过期，请重新登录');
+    }
+  } finally {
+    isRefreshing = false;
+  }
+};
+
+/**
+ * 使用指定 token 发送请求
+ */
+const requestWithToken = <T>(options: RequestOptions, token: string): Promise<T> => {
+  const { url, method = 'GET', data, header = {} } = options;
+  
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: `${BASE_URL}${url}`,
+      method,
+      data,
+      header: {
+        'Content-Type': 'application/json',
+        ...header,
+        'Authorization': `Bearer ${token}`,
+      },
+      success: (res) => {
+        const statusCode = res.statusCode;
+        const response = res.data as ApiResponse<T>;
+        
+        if (statusCode >= 200 && statusCode < 300) {
+          if (isWrappedResponse<T>(response)) {
+            if (response.code === 0) {
+              resolve(response.data as T);
+            } else {
+              reject(new Error(response.message || '请求失败'));
+            }
+          } else {
+            resolve(response as T);
+          }
+        } else {
+          const errorMessage = (response as ApiResponse<T>).message || `请求失败 (${statusCode})`;
+          reject(new Error(errorMessage));
+        }
+      },
+      fail: (err) => {
+        reject(new Error('网络请求失败，请检查网络连接'));
+      }
+    });
+  });
+};
+
+/**
+ * 通用请求方法 - 支持自动刷新 Token
  */
 export const request = async <T = unknown>(options: RequestOptions): Promise<T> => {
   const { url, method = 'GET', data, header = {} } = options;
@@ -104,7 +270,7 @@ export const request = async <T = unknown>(options: RequestOptions): Promise<T> 
         'Content-Type': 'application/json',
         ...header
       },
-      success: (res) => {
+      success: async (res) => {
         const statusCode = res.statusCode;
         const response = res.data as ApiResponse<T>;
         
@@ -124,10 +290,23 @@ export const request = async <T = unknown>(options: RequestOptions): Promise<T> 
             resolve(response as T);
           }
         } else if (statusCode === 401) {
-          // Token过期，清除凭证并跳转登录
-          clearTokens();
-          uni.reLaunch({ url: '/pages/login/index' });
-          reject(new Error('登录已过期，请重新登录'));
+          // Token过期，尝试刷新 Token
+          console.log('[API] 401 Unauthorized, attempting token refresh...');
+          
+          // 排除刷新接口本身，避免死循环
+          if (url.includes('/auth/refresh') || url.includes('/auth/login')) {
+            clearTokens();
+            uni.reLaunch({ url: '/pages/login/index' });
+            reject(new Error('登录已过期，请重新登录'));
+            return;
+          }
+          
+          try {
+            const result = await handleTokenExpired<T>(options);
+            resolve(result);
+          } catch (err) {
+            reject(err);
+          }
         } else {
           // 错误响应
           const errorMessage = response.message || `请求失败 (${statusCode})`;
@@ -246,6 +425,12 @@ export const authApi = {
   
   /** 修改密码 */
   changePassword: (oldPassword: string, newPassword: string) => post('/auth/change-password', { oldPassword, newPassword }),
+  
+  /** 发送密码重置验证码（忘记密码） */
+  forgotPassword: (email: string) => post<{ message: string }>('/auth/forgot-password', { email }),
+  
+  /** 重置密码 */
+  resetPassword: (token: string, newPassword: string) => post<{ message: string }>('/auth/reset-password', { token, newPassword }),
 };
 
 /**

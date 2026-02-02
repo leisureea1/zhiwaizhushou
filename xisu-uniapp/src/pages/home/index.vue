@@ -105,6 +105,104 @@ import { jwxtApi, getAccessToken } from '@/services/apiService';
 // 学期周数配置
 const TOTAL_WEEKS = 18; // 学期总周数
 
+// ============ 课程表本地缓存 ============
+const COURSES_CACHE_KEY = 'courses_cache';
+const SEMESTERS_CACHE_KEY = 'semesters_cache';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 缓存有效期：24小时
+
+interface CacheData<T> {
+	data: T;
+	timestamp: number;
+	semesterId?: string;
+}
+
+// 保存课程缓存
+const saveCoursesCache = (semesterId: string, courses: DisplayCourse[]) => {
+	try {
+		const cacheData: CacheData<DisplayCourse[]> = {
+			data: courses,
+			timestamp: Date.now(),
+			semesterId,
+		};
+		uni.setStorageSync(`${COURSES_CACHE_KEY}_${semesterId}`, JSON.stringify(cacheData));
+		console.log('[Cache] Courses saved for semester:', semesterId, 'count:', courses.length);
+	} catch (e) {
+		console.error('[Cache] Failed to save courses:', e);
+	}
+};
+
+// 获取课程缓存
+const getCoursesCache = (semesterId: string): DisplayCourse[] | null => {
+	try {
+		const cached = uni.getStorageSync(`${COURSES_CACHE_KEY}_${semesterId}`);
+		if (cached) {
+			const cacheData: CacheData<DisplayCourse[]> = JSON.parse(cached);
+			// 检查缓存是否过期
+			if (Date.now() - cacheData.timestamp < CACHE_DURATION) {
+				console.log('[Cache] Courses loaded from cache for semester:', semesterId);
+				return cacheData.data;
+			} else {
+				console.log('[Cache] Courses cache expired for semester:', semesterId);
+			}
+		}
+	} catch (e) {
+		console.error('[Cache] Failed to read courses cache:', e);
+	}
+	return null;
+};
+
+// 保存学期缓存
+const saveSemestersCache = (semesterList: SemesterInfo[], currentId: string) => {
+	try {
+		const cacheData: CacheData<{ list: SemesterInfo[]; currentId: string }> = {
+			data: { list: semesterList, currentId },
+			timestamp: Date.now(),
+		};
+		uni.setStorageSync(SEMESTERS_CACHE_KEY, JSON.stringify(cacheData));
+		console.log('[Cache] Semesters saved, count:', semesterList.length);
+	} catch (e) {
+		console.error('[Cache] Failed to save semesters:', e);
+	}
+};
+
+// 获取学期缓存
+const getSemestersCache = (): { list: SemesterInfo[]; currentId: string } | null => {
+	try {
+		const cached = uni.getStorageSync(SEMESTERS_CACHE_KEY);
+		if (cached) {
+			const cacheData: CacheData<{ list: SemesterInfo[]; currentId: string }> = JSON.parse(cached);
+			// 学期数据缓存有效期更长（7天）
+			if (Date.now() - cacheData.timestamp < 7 * 24 * 60 * 60 * 1000) {
+				console.log('[Cache] Semesters loaded from cache');
+				return cacheData.data;
+			}
+		}
+	} catch (e) {
+		console.error('[Cache] Failed to read semesters cache:', e);
+	}
+	return null;
+};
+
+// 清除课程缓存（用于刷新）
+const clearCoursesCache = (semesterId?: string) => {
+	try {
+		if (semesterId) {
+			uni.removeStorageSync(`${COURSES_CACHE_KEY}_${semesterId}`);
+		} else {
+			// 清除所有课程缓存
+			const keys = uni.getStorageInfoSync().keys;
+			keys.forEach((key: string) => {
+				if (key.startsWith(COURSES_CACHE_KEY)) {
+					uni.removeStorageSync(key);
+				}
+			});
+		}
+		console.log('[Cache] Courses cache cleared');
+	} catch (e) {
+		console.error('[Cache] Failed to clear cache:', e);
+	}
+};
+
 // 根据学期名称解析学期开始日期
 const parseSemesterStartDate = (semesterName: string): Date | null => {
 	// 学期名称格式: "2025-2026学年第一学期" 或 "2025-2026学年第二学期"
@@ -281,7 +379,8 @@ const onMultiPickerChange = async (e: any) => {
 	updateWeekDays();
 	
 	try {
-		await loadCourses();
+		// 切换学期时强制刷新
+		await loadCourses(semesterChanged);
 		uni.hideLoading();
 	} catch (error) {
 		uni.hideLoading();
@@ -294,8 +393,24 @@ const onColumnChange = (e: any) => {
 	console.log('[Home] Column change:', e.detail.column, e.detail.value);
 };
 
-// 加载学期列表
+// 加载学期列表（优先使用缓存）
 const loadSemesters = async () => {
+	// 先尝试从缓存加载
+	const cached = getSemestersCache();
+	if (cached && cached.list.length > 0) {
+		semesters.value = cached.list;
+		currentSemesterId.value = cached.currentId;
+		console.log('[Home] Loaded semesters from cache:', semesters.value.length);
+		// 后台静默更新
+		fetchSemestersFromServer();
+		return;
+	}
+	
+	await fetchSemestersFromServer();
+};
+
+// 从服务器获取学期列表
+const fetchSemestersFromServer = async () => {
 	try {
 		const res = await jwxtApi.getSemesters();
 		console.log('[Home] Semesters response:', res);
@@ -312,6 +427,9 @@ const loadSemesters = async () => {
 			} else if (semesters.value.length > 0) {
 				currentSemesterId.value = semesters.value[0].id;
 			}
+			
+			// 保存到缓存
+			saveSemestersCache(semesters.value, currentSemesterId.value);
 			console.log('[Home] Loaded semesters:', semesters.value.length, 'current:', currentSemesterId.value);
 		}
 	} catch (error) {
@@ -446,8 +564,73 @@ const parseWeeks = (weeksStr: string): number[] => {
 	return weeks.sort((a, b) => a - b);
 };
 
-// 从后端加载课程表
-const loadCourses = async () => {
+// 将API返回的课程数据转换为显示格式
+const transformCourses = (apiCourses: Array<{
+	name: string;
+	teacher: string;
+	classroom: string;
+	weekday: number;
+	startSection: number;
+	endSection: number;
+	weeks?: string;
+}>): DisplayCourse[] => {
+	return apiCourses.map(course => ({
+		name: course.name,
+		teacher: course.teacher,
+		room: course.classroom,
+		day: course.weekday,
+		start: course.startSection,
+		span: course.endSection - course.startSection + 1,
+		colorClass: getCourseColor(course.name),
+		weeks: parseWeeks(course.weeks || ''),
+	}));
+};
+
+// 从后端获取课程数据
+const fetchCoursesFromServer = async (semesterId: string, showError = true): Promise<boolean> => {
+	try {
+		const res = await jwxtApi.getCourses(semesterId === 'default' ? undefined : semesterId);
+		console.log('[Home] Courses response:', JSON.stringify(res));
+		
+		if (res.success && res.data?.courses) {
+			allCourses.value = transformCourses(res.data.courses);
+			// 保存到缓存
+			saveCoursesCache(semesterId, allCourses.value);
+			console.log('[Home] Loaded courses from server:', allCourses.value.length);
+			return true;
+		} else if (res.error && showError) {
+			console.error('[Home] Failed to load courses:', res.error);
+			uni.showToast({ title: res.error, icon: 'none' });
+		}
+		return false;
+	} catch (error) {
+		console.error('[Home] Error loading courses:', error);
+		const errorMsg = error instanceof Error ? error.message : '加载课程表失败';
+		
+		if (showError) {
+			// 检测是否是教务系统未绑定的错误
+			if (errorMsg.includes('绑定') || errorMsg.includes('教务')) {
+				uni.showModal({
+					title: '提示',
+					content: '您需要先绑定教务系统账号才能查看课程表，是否现在去绑定？',
+					confirmText: '去绑定',
+					cancelText: '稍后',
+					success: (result) => {
+						if (result.confirm) {
+							uni.navigateTo({ url: '/pages/profile/bind-jwxt' });
+						}
+					}
+				});
+			} else {
+				uni.showToast({ title: errorMsg, icon: 'none' });
+			}
+		}
+		return false;
+	}
+};
+
+// 从后端加载课程表：先显示缓存，同时异步更新
+const loadCourses = async (forceRefresh = false) => {
 	// 检查是否已登录
 	const token = getAccessToken();
 	if (!token) {
@@ -455,50 +638,30 @@ const loadCourses = async () => {
 		return;
 	}
 	
-	isLoading.value = true;
+	const semesterId = currentSemesterId.value || 'default';
+	
+	// 1. 先尝试从缓存加载并立即显示
+	const cachedCourses = getCoursesCache(semesterId);
+	const hasCache = cachedCourses && cachedCourses.length > 0;
+	
+	if (hasCache && !forceRefresh) {
+		allCourses.value = cachedCourses;
+		// 重新分配颜色
+		allCourses.value.forEach(course => {
+			course.colorClass = getCourseColor(course.name);
+		});
+		console.log('[Home] Displayed from cache:', allCourses.value.length, 'courses');
+	}
+	
+	// 2. 同时异步从后端获取最新数据
+	if (!hasCache) {
+		// 没有缓存时显示加载状态
+		isLoading.value = true;
+	}
 	
 	try {
-		// 传入当前选中的学期ID
-		const semesterId = currentSemesterId.value || undefined;
-		const res = await jwxtApi.getCourses(semesterId);
-		console.log('[Home] Courses response:', JSON.stringify(res));
-		
-		if (res.success && res.data?.courses) {
-			allCourses.value = res.data.courses.map(course => ({
-				name: course.name,
-				teacher: course.teacher,
-				room: course.classroom,
-				day: course.weekday,
-				start: course.startSection,
-				span: course.endSection - course.startSection + 1,
-				colorClass: getCourseColor(course.name),
-				weeks: parseWeeks(course.weeks || ''),
-			}));
-			console.log('[Home] Loaded courses:', allCourses.value.length, 'for week', currentWeek.value, 'showing:', courses.value.length);
-		} else if (res.error) {
-			console.error('[Home] Failed to load courses:', res.error);
-			uni.showToast({ title: res.error, icon: 'none' });
-		}
-	} catch (error) {
-		console.error('[Home] Error loading courses:', error);
-		const errorMsg = error instanceof Error ? error.message : '加载课程表失败';
-		
-		// 检测是否是教务系统未绑定的错误
-		if (errorMsg.includes('绑定') || errorMsg.includes('教务')) {
-			uni.showModal({
-				title: '提示',
-				content: '您需要先绑定教务系统账号才能查看课程表，是否现在去绑定？',
-				confirmText: '去绑定',
-				cancelText: '稍后',
-				success: (result) => {
-					if (result.confirm) {
-						uni.navigateTo({ url: '/pages/profile/bind-jwxt' });
-					}
-				}
-			});
-		} else {
-			uni.showToast({ title: errorMsg, icon: 'none' });
-		}
+		// 异步获取最新数据（有缓存时静默更新，无缓存时显示错误）
+		await fetchCoursesFromServer(semesterId, !hasCache);
 	} finally {
 		isLoading.value = false;
 	}
@@ -539,22 +702,18 @@ const handleMenu = () => {
 const handleRefresh = async () => {
 	uni.showLoading({ title: '刷新中...', mask: true });
 	try {
-		// 使用刷新接口（会清除缓存重新获取）
-		const semesterId = currentSemesterId.value || undefined;
-		const res = await jwxtApi.refreshCourses(semesterId);
+		// 清除当前学期的课程缓存
+		const semesterId = currentSemesterId.value || 'default';
+		clearCoursesCache(semesterId);
+		
+		// 使用刷新接口（会清除后端缓存重新获取）
+		const res = await jwxtApi.refreshCourses(semesterId === 'default' ? undefined : semesterId);
 		console.log('[Home] Refresh courses response:', JSON.stringify(res));
 		
 		if (res.success && res.data?.courses) {
-			allCourses.value = res.data.courses.map(course => ({
-				name: course.name,
-				teacher: course.teacher,
-				room: course.classroom,
-				day: course.weekday,
-				start: course.startSection,
-				span: course.endSection - course.startSection + 1,
-				colorClass: getCourseColor(course.name),
-				weeks: parseWeeks(course.weeks || ''),
-			}));
+			allCourses.value = transformCourses(res.data.courses);
+			// 保存到缓存
+			saveCoursesCache(semesterId, allCourses.value);
 		}
 		uni.hideLoading();
 		uni.showToast({ title: '刷新成功', icon: 'success' });

@@ -51,7 +51,7 @@
 					</view>
 
 					<view class="forgot-password">
-						<text class="forgot-link">忘记密码?</text>
+						<text class="forgot-link" @tap="handleForgotPassword">忘记密码?</text>
 					</view>
 				</view>
 
@@ -141,6 +141,12 @@ const handleLogin = async () => {
 const handleRegister = () => {
 	uni.navigateTo({
 		url: '/pages/register/index'
+	});
+};
+
+const handleForgotPassword = () => {
+	uni.navigateTo({
+		url: '/pages/forgot-password/index'
 	});
 };
 </script>

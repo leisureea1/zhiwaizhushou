@@ -1,8 +1,8 @@
 {
     "name" : "xisu-uniapp",
-    "appid" : "",
+    "appid" : "wx3fd47e5af257e6a2",
     "description" : "",
-    "versionName" : "1.0.0",
+    "versionName" : "2.0.0",
     "versionCode" : "100",
     "transformPx" : false,
     /* 5+App特有相关 */
@@ -50,11 +50,19 @@
     "quickapp" : {},
     /* 小程序特有相关 */
     "mp-weixin" : {
-        "appid" : "",
+        "appid" : "wx3fd47e5af257e6a2",
         "setting" : {
-            "urlCheck" : false
+            "urlCheck" : true,
+            "minified" : true,
+            "postcss" : true
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "lazyCodeLoading" : "requiredComponents",
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "天气服务"
+            }
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true
