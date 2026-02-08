@@ -66,13 +66,21 @@
 			</view>
 
 			<!-- 底部协议 -->
-			<view class="footer-text">
-				<text class="agreement">
-					登录即代表您同意 
-					<text class="link">服务条款</text> 
-					& 
-					<text class="link">隐私政策</text>
-				</text>
+			<view class="footer-agreement">
+				<view class="agreement-row" @tap="agreedPrivacy = !agreedPrivacy">
+					<view class="checkbox" :class="{ checked: agreedPrivacy }">
+						<text v-if="agreedPrivacy" class="iconfont icon-check_circle" style="font-size: 36rpx; color: #3B82F6;"></text>
+						<view v-else class="checkbox-empty"></view>
+					</view>
+					<text class="agreement-text">
+						我已阅读并同意
+					</text>
+				</view>
+				<view class="agreement-links">
+					<text class="link" @tap.stop="openServiceAgreement">《用户服务协议》</text>
+					<text class="agreement-text">和</text>
+					<text class="link" @tap.stop="openPrivacyPolicy">《隐私政策》</text>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -86,6 +94,7 @@ const studentId = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const isLoading = ref(false);
+const agreedPrivacy = ref(false);
 
 // 检查是否已登录
 onMounted(() => {
@@ -97,7 +106,19 @@ onMounted(() => {
 	}
 });
 
+const openServiceAgreement = () => {
+	uni.navigateTo({ url: '/pages/service-agreement/index' });
+};
+
+const openPrivacyPolicy = () => {
+	uni.navigateTo({ url: '/pages/privacy-policy/index' });
+};
+
 const handleLogin = async () => {
+	if (!agreedPrivacy.value) {
+		uni.showToast({ title: '请先阅读并同意用户服务协议和隐私政策', icon: 'none', duration: 2000 });
+		return;
+	}
 	if (!studentId.value) {
 		uni.showToast({ title: '请输入学号', icon: 'none' });
 		return;
@@ -356,19 +377,47 @@ const handleForgotPassword = () => {
 	}
 }
 
-.footer-text {
+.footer-agreement {
 	margin-top: auto;
-	padding-top: 80rpx;
+	padding-top: 60rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 }
 
-.agreement {
+.agreement-row {
+	display: flex;
+	align-items: center;
+	margin-bottom: 8rpx;
+}
+
+.checkbox {
+	margin-right: 12rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.checkbox-empty {
+	width: 32rpx;
+	height: 32rpx;
+	border-radius: 50%;
+	border: 2rpx solid #ccc;
+	background-color: #fff;
+}
+
+.agreement-text {
 	font-size: 24rpx;
 	color: $text-light;
-	text-align: center;
+}
+
+.agreement-links {
+	display: flex;
+	align-items: center;
 }
 
 .link {
-	text-decoration: underline;
-	color: $text-secondary;
+	font-size: 24rpx;
+	color: $primary;
 }
 </style>

@@ -90,6 +90,22 @@
 						</view>
 					</view>
 					<text v-if="confirmPasswordError" class="error-hint">{{ confirmPasswordError }}</text>
+
+					<!-- 隐私协议勾选 -->
+					<view class="agreement-section">
+						<view class="agreement-row" @tap="agreedPrivacy = !agreedPrivacy">
+							<view class="checkbox">
+								<text v-if="agreedPrivacy" class="iconfont icon-check_circle" style="font-size: 36rpx; color: #3B82F6;"></text>
+								<view v-else class="checkbox-empty"></view>
+							</view>
+							<text class="agreement-text">我已阅读并同意</text>
+						</view>
+						<view class="agreement-links">
+							<text class="agreement-link" @tap.stop="openServiceAgreement">《用户服务协议》</text>
+							<text class="agreement-text">和</text>
+							<text class="agreement-link" @tap.stop="openPrivacyPolicy">《隐私政策》</text>
+						</view>
+					</view>
 				</view>
 			</view>
 
@@ -274,6 +290,15 @@ import { authApi, saveTokens, saveUserInfo } from '@/services/apiService';
 // 当前步骤
 const currentStep = ref(1);
 const isRegistering = ref(false);
+const agreedPrivacy = ref(false);
+
+const openServiceAgreement = () => {
+	uni.navigateTo({ url: '/pages/service-agreement/index' });
+};
+
+const openPrivacyPolicy = () => {
+	uni.navigateTo({ url: '/pages/privacy-policy/index' });
+};
 
 // 步骤1: 用户名密码
 const username = ref('');
@@ -518,6 +543,10 @@ const nextStep = () => {
 				return;
 			}
 			if (usernameError.value || passwordError.value || confirmPasswordError.value) {
+				return;
+			}
+			if (!agreedPrivacy.value) {
+				uni.showToast({ title: '请先阅读并同意用户服务协议和隐私政策', icon: 'none', duration: 2000 });
 				return;
 			}
 			break;
@@ -1054,5 +1083,50 @@ const handleRegister = async () => {
 	font-size: 32rpx;
 	color: #10b981;
 	font-weight: 600;
+}
+
+// 协议勾选区域
+.agreement-section {
+	margin-top: 32rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+}
+
+.agreement-row {
+	display: flex;
+	align-items: center;
+	margin-bottom: 8rpx;
+}
+
+.checkbox {
+	margin-right: 12rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.checkbox-empty {
+	width: 32rpx;
+	height: 32rpx;
+	border-radius: 50%;
+	border: 2rpx solid #ccc;
+	background-color: #fff;
+}
+
+.agreement-text {
+	font-size: 24rpx;
+	color: $text-light;
+}
+
+.agreement-links {
+	display: flex;
+	align-items: center;
+	padding-left: 44rpx;
+}
+
+.agreement-link {
+	font-size: 24rpx;
+	color: $primary;
 }
 </style>

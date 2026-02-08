@@ -83,6 +83,20 @@
 				"navigationStyle": "custom",
 				"navigationBarTitleText": "绑定教务系统"
 			}
+		},
+		{
+			"path": "pages/privacy-policy/index",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "隐私政策"
+			}
+		},
+		{
+			"path": "pages/service-agreement/index",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "用户服务协议"
+			}
 		}
 	],
 	"globalStyle": {
