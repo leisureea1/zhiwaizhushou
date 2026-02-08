@@ -177,6 +177,9 @@ const handleMenuItem = (name: string) => {
 		case '修改知外助手密码':
 			uni.navigateTo({ url: '/pages/profile/change-password' });
 			break;
+		case '关于我们':
+			uni.navigateTo({ url: '/pages/profile/about' });
+			break;
 		default:
 			uni.showToast({ title: name, icon: 'none' });
 	}

@@ -99,6 +99,13 @@
 			}
 		},
 		{
+			"path": "pages/profile/about",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "关于我们"
+			}
+		},
+		{
 			"path": "pages/privacy-policy/index",
 			"style": {
 				"navigationStyle": "custom",
