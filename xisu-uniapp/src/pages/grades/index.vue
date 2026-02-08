@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { safeNavigateBack } from '@/utils/navigation';
 import { jwxtApi, type GradeItem, type GradeStatistics, type SemesterInfo } from '@/services/apiService';
 
 const isLoading = ref(false);
@@ -342,7 +343,7 @@ const getDetailItems = (grade: GradeItem) => {
 };
 
 const goBack = () => {
-	uni.navigateBack();
+	safeNavigateBack();
 };
 
 onMounted(async () => {

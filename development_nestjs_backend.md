@@ -71,7 +71,7 @@ backend-nest/
 - 语言：TypeScript
 - 框架：NestJS（模块化、依赖注入、内置 Swagger 支持）
 - ORM：Prisma（推荐）或 TypeORM
-- 数据库：PostgreSQL
+- 数据库：MySQL
 - 缓存/会话：Redis
 - HTTP 客户端：axios 或 got（统一封装，支持超时与重试）
 - 认证：JWT（Access + Refresh），密码哈希使用 bcrypt 或 Argon2

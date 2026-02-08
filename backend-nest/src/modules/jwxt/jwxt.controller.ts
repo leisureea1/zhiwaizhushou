@@ -7,24 +7,56 @@ import {
   UseGuards,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwxtClientService } from '@/services/jwxt-client.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { RedisService } from '@/services/redis.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+
+// 缓存配置
+const TOKEN_CACHE_PREFIX = 'jwxt:token:';
+const TOKEN_CACHE_TTL = 50 * 60; // 50分钟（Python token有效期1小时，留10分钟余量）
+const SEMESTER_CACHE_PREFIX = 'jwxt:semester:';
+const SEMESTER_CACHE_TTL = 24 * 60 * 60; // 1天
 
 @ApiTags('教务系统')
 @Controller('jwxt')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class JwxtController {
+  private readonly logger = new Logger(JwxtController.name);
+
   constructor(
     private readonly jwxtClient: JwxtClientService,
     private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
   ) {}
 
+  /**
+   * 获取 JWXT Token（带 Redis 缓存，避免每次都重新 CAS 登录）
+   */
   private async getJwxtToken(userId: string): Promise<string> {
+    // 1. 尝试从缓存获取 token
+    const cacheKey = `${TOKEN_CACHE_PREFIX}${userId}`;
+    try {
+      const cachedToken = await this.redisService.get(cacheKey);
+      if (cachedToken) {
+        // 验证 token 是否仍然有效
+        const isValid = await this.jwxtClient.validateSession(cachedToken);
+        if (isValid) {
+          this.logger.debug(`[Token Cache HIT] user: ${userId}`);
+          return cachedToken;
+        }
+        this.logger.debug(`[Token Cache EXPIRED] user: ${userId}, re-login`);
+      }
+    } catch (error) {
+      this.logger.warn(`Token cache read error: ${error}`);
+    }
+
+    // 2. 缓存未命中或已过期，重新登录
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { jwxtUsername: true, jwxtPassword: true },
@@ -34,11 +66,19 @@ export class JwxtController {
       throw new HttpException('请先绑定教务系统账号', HttpStatus.BAD_REQUEST);
     }
 
-    // 登录教务系统获取 token
     const result = await this.jwxtClient.login(user.jwxtUsername, user.jwxtPassword);
     if (!result.success || !result.token) {
       throw new HttpException(result.error || '教务系统登录失败', HttpStatus.BAD_REQUEST);
     }
+
+    // 3. 缓存 token
+    try {
+      await this.redisService.set(cacheKey, result.token, TOKEN_CACHE_TTL);
+      this.logger.debug(`[Token Cache SET] user: ${userId}, TTL: ${TOKEN_CACHE_TTL}s`);
+    } catch (error) {
+      this.logger.warn(`Token cache write error: ${error}`);
+    }
+
     return result.token;
   }
 
@@ -84,8 +124,30 @@ export class JwxtController {
   @ApiOperation({ summary: '获取学期列表' })
   @ApiResponse({ status: 200, description: '成功' })
   async getSemesters(@CurrentUser('id') userId: string) {
+    // 学期数据几乎不变，优先从缓存读取
+    const cacheKey = `${SEMESTER_CACHE_PREFIX}${userId}`;
+    try {
+      const cached = await this.redisService.get(cacheKey);
+      if (cached) {
+        this.logger.debug(`[Semester Cache HIT] user: ${userId}`);
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      this.logger.warn(`Semester cache read error: ${error}`);
+    }
+
     const token = await this.getJwxtToken(userId);
-    return this.jwxtClient.getSemesters(token);
+    const data = await this.jwxtClient.getSemesters(token);
+
+    // 缓存学期数据
+    try {
+      await this.redisService.set(cacheKey, JSON.stringify(data), SEMESTER_CACHE_TTL);
+      this.logger.debug(`[Semester Cache SET] user: ${userId}`);
+    } catch (error) {
+      this.logger.warn(`Semester cache write error: ${error}`);
+    }
+
+    return data;
   }
 
   @Get('evaluation/pending')

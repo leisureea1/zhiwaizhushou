@@ -62,6 +62,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { safeNavigateBack } from '@/utils/navigation';
 import { jwxtApi, getUserInfo } from '@/services/apiService';
 
 const statusBarHeight = ref(0);
@@ -82,7 +83,7 @@ onMounted(() => {
 });
 
 const handleBack = () => {
-	uni.navigateBack();
+	safeNavigateBack();
 };
 
 const handleBind = async () => {
@@ -105,7 +106,7 @@ const handleBind = async () => {
 		if (res.message) {
 			uni.showToast({ title: '绑定成功', icon: 'success' });
 			setTimeout(() => {
-				uni.navigateBack();
+				safeNavigateBack();
 			}, 1500);
 		}
 	} catch (error) {

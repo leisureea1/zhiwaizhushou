@@ -8,7 +8,7 @@
 
 - [环境要求](#环境要求)
 - [一、安装必要软件](#一安装必要软件)
-- [二、部署 PostgreSQL 数据库](#二部署-postgresql-数据库)
+- [二、部署 MySQL 数据库](#二部署-mysql-数据库)
 - [三、部署 Redis 缓存](#三部署-redis-缓存)
 - [四、部署 FastAPI 教务服务](#四部署-fastapi-教务服务)
 - [五、部署 NestJS 后端](#五部署-nestjs-后端)
@@ -26,7 +26,7 @@
 - 宝塔面板：≥ 7.0
 - Node.js：18.x LTS
 - Python：3.9+
-- PostgreSQL：15+
+- MySQL：8.0+
 - Redis：7+
 
 ---
@@ -40,7 +40,7 @@
 - ✅ Nginx（推荐 1.24+）
 - ✅ PM2 管理器
 - ✅ Supervisor 管理器
-- ✅ PostgreSQL 15
+- ✅ MySQL 8.0
 - ✅ Redis 7
 - ✅ Python 项目管理器（Python 3.9+）
 
@@ -67,7 +67,7 @@ npm install -g pm2 prisma
 
 ---
 
-## 二、部署 PostgreSQL 数据库
+## 二、部署 MySQL 数据库
 
 ### 2.1 创建数据库
 
@@ -77,12 +77,13 @@ npm install -g pm2 prisma
 2. 数据库名：`xisu`
 3. 用户名：`xisu_user`
 4. 密码：生成强密码并保存
-5. 访问权限：本地服务器
+5. 字符集：`utf8mb4`
+6. 访问权限：本地服务器
 
 ### 2.2 记录数据库连接信息
 
 ```
-DATABASE_URL=postgresql://xisu_user:你的密码@127.0.0.1:5432/xisu?schema=public
+DATABASE_URL=mysql://xisu_user:你的密码@127.0.0.1:3306/xisu
 ```
 
 ---
@@ -188,7 +189,7 @@ NODE_ENV=production
 PORT=3000
 
 # 数据库
-DATABASE_URL=postgresql://xisu_user:你的数据库密码@127.0.0.1:5432/xisu?schema=public
+DATABASE_URL=mysql://xisu_user:你的数据库密码@127.0.0.1:3306/xisu
 
 # Redis
 REDIS_HOST=127.0.0.1
@@ -437,8 +438,8 @@ tail -100 /www/wwwlogs/jwxt-api.log
 cd /www/wwwroot/xisu-api
 npx prisma db pull
 
-# 检查 PostgreSQL 状态
-systemctl status postgresql
+# 检查 MySQL 状态
+systemctl status mysql
 ```
 
 ### 9.3 Redis 连接失败

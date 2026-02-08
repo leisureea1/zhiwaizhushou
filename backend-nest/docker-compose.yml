@@ -13,7 +13,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/xisu?schema=public
+      - DATABASE_URL=mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/xisu
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
@@ -21,7 +21,7 @@ services:
       - JWXT_SERVICE_URL=http://jwxt:8000
       - JWXT_SERVICE_API_KEY=${JWXT_SERVICE_API_KEY}
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       redis:
         condition: service_started
@@ -30,23 +30,23 @@ services:
     volumes:
       - uploads:/app/uploads
 
-  # PostgreSQL 数据库
-  postgres:
-    image: postgres:15-alpine
-    container_name: xisu-postgres
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: xisu-mysql
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=xisu
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=xisu
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - mysql-data:/var/lib/mysql
     networks:
       - xisu-network
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -83,6 +83,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
+  mysql-data:
   redis-data:
   uploads:

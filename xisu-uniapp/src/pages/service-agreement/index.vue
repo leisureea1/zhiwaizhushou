@@ -78,8 +78,10 @@
 </template>
 
 <script setup lang="ts">
+import { safeNavigateBack } from '@/utils/navigation';
+
 const handleBack = () => {
-	uni.navigateBack();
+	safeNavigateBack('/pages/login/index');
 };
 </script>
 

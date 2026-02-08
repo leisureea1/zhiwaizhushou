@@ -112,6 +112,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { safeNavigateBack } from '@/utils/navigation';
 import { jwxtApi, type EvaluationItem } from '@/services/apiService';
 
 const isLoading = ref(false);
@@ -211,7 +212,7 @@ const handleRefresh = () => {
 };
 
 const goBack = () => {
-	uni.navigateBack();
+	safeNavigateBack();
 };
 
 onMounted(() => {

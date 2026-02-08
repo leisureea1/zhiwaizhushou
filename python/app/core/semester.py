@@ -74,8 +74,8 @@ class SemesterService:
                 timeout=15
             )
             
-            current = self.get_current_id()
             semesters = []
+            current = None
             
             # 解析 option 标签
             soup = BeautifulSoup(resp.text, "html.parser")
@@ -83,9 +83,17 @@ class SemesterService:
                 sem_id = option.get("value", "").strip()
                 if sem_id and sem_id.isdigit():
                     sem = {"id": sem_id, "name": option.get_text(strip=True)}
-                    if sem_id == current:
+                    if option.get("selected") is not None:
                         sem["current"] = True
+                        current = sem_id
                     semesters.append(sem)
+            
+            # 如果没从 selected 属性找到当前学期，用 get_current_id 兜底
+            if not current:
+                current = self.get_current_id()
+                for sem in semesters:
+                    if sem["id"] == current:
+                        sem["current"] = True
             
             # 按学年倒序排列（最新的在前面）
             semesters.reverse()
@@ -104,11 +112,10 @@ class SemesterService:
     
     def get_info(self) -> Dict:
         """获取学期详细信息"""
-        current_id = self.get_current_id()
         available = self.get_available()
         
         return {
             "success": True,
-            "current_semester_id": current_id,
+            "current_semester_id": available.get("current_semester"),
             "semesters": available.get("semesters", []),
         }

@@ -122,6 +122,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { safeNavigateBack } from '@/utils/navigation';
 import { getUserInfo } from '@/services/apiService';
 
 const user = ref({ avatar: '/static/default-avatar.png', name: '用户' });
@@ -146,7 +147,7 @@ const busSchedule = ref([
 ]);
 
 const goBack = () => {
-	uni.navigateBack();
+	safeNavigateBack();
 };
 </script>
 

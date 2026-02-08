@@ -285,6 +285,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { safeNavigateBack } from '@/utils/navigation';
 import { authApi, saveTokens, saveUserInfo } from '@/services/apiService';
 
 // 当前步骤
@@ -519,7 +520,7 @@ const handleBack = () => {
 	if (currentStep.value > 1) {
 		currentStep.value--;
 	} else {
-		uni.navigateBack();
+		safeNavigateBack('/pages/login/index');
 	}
 };
 
@@ -591,7 +592,7 @@ const skipAvatar = () => {
 
 // 去登录
 const goToLogin = () => {
-	uni.navigateBack();
+	safeNavigateBack('/pages/login/index');
 };
 
 // 完成注册

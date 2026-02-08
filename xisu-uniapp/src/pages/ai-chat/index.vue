@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue';
+import { safeNavigateBack } from '@/utils/navigation';
 import { ChatMessage } from '@/types/index';
 import { getUserInfo } from '@/services/apiService';
 
@@ -100,7 +101,7 @@ const isLoading = ref(false);
 const scrollToId = ref('scroll-bottom');
 
 const goBack = () => {
-	uni.navigateBack();
+	safeNavigateBack();
 };
 
 const scrollToBottom = () => {
