@@ -66,7 +66,7 @@
 						<text class="iconfont icon-school"></text>
 					</view>
 					<text class="menu-label">关于我们</text>
-					<view class="version-tag">v2.4.1</view>
+					<view class="version-tag">Leisure</view>
 					<text class="arrow">›</text>
 				</view>
 			</view>
