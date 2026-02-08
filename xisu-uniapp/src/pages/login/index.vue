@@ -34,7 +34,7 @@
 							class="input-field" 
 							type="text" 
 							v-model="studentId"
-							placeholder="学号 / Student ID" 
+							placeholder="学号/用户名/邮箱" 
 							placeholder-class="placeholder"
 						/>
 					</view>
@@ -48,7 +48,7 @@
 							type="text"
 							:password="!showPassword"
 							v-model="password"
-							placeholder="密码 / Password" 
+							placeholder="密码" 
 							placeholder-class="placeholder"
 						/>
 						<view class="toggle-password" @tap="showPassword = !showPassword">
@@ -126,7 +126,7 @@ const handleLogin = async () => {
 		return;
 	}
 	if (!studentId.value) {
-		uni.showToast({ title: '请输入学号', icon: 'none' });
+		uni.showToast({ title: '请输入学号/用户名/邮箱', icon: 'none' });
 		return;
 	}
 	if (!password.value) {

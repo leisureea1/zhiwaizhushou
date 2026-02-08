@@ -66,7 +66,7 @@ model RefreshToken {
   token       String   @unique
   userId      String   @map("user_id")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userAgent   String?  @map("user_agent")
+  userAgent   String?  @map("user_agent") @db.Text
   ipAddress   String?  @map("ip_address")
   expiresAt   DateTime @map("expires_at")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -180,7 +180,7 @@ model SystemLog {
   user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   
   ipAddress   String?    @map("ip_address")
-  userAgent   String?    @map("user_agent")
+  userAgent   String?    @map("user_agent") @db.Text
   requestPath String?    @map("request_path")
   requestMethod String?  @map("request_method")
   responseCode  Int?     @map("response_code")

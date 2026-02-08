@@ -293,11 +293,18 @@ export const request = async <T = unknown>(options: RequestOptions): Promise<T> 
           // Token过期，尝试刷新 Token
           console.log('[API] 401 Unauthorized, attempting token refresh...');
           
-          // 排除刷新接口本身，避免死循环
-          if (url.includes('/auth/refresh') || url.includes('/auth/login')) {
+          // 排除登录和刷新接口本身，避免死循环
+          if (url.includes('/auth/refresh')) {
             clearTokens();
             uni.reLaunch({ url: '/pages/login/index' });
             reject(new Error('登录已过期，请重新登录'));
+            return;
+          }
+
+          // 登录接口返回401，直接提示后端错误信息
+          if (url.includes('/auth/login')) {
+            const errorMessage = response.message || '学号或密码错误';
+            reject(new Error(errorMessage));
             return;
           }
           

@@ -85,6 +85,20 @@
 			}
 		},
 		{
+			"path": "pages/profile/update-jwxt-password",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "更新教务系统密码"
+			}
+		},
+		{
+			"path": "pages/profile/change-password",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarTitleText": "修改密码"
+			}
+		},
+		{
 			"path": "pages/privacy-policy/index",
 			"style": {
 				"navigationStyle": "custom",

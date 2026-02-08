@@ -38,7 +38,7 @@
 					<view class="menu-icon bg-orange">
 						<text class="iconfont icon-arrow_forward"></text>
 					</view>
-					<text class="menu-label">修改门户密码</text>
+					<text class="menu-label">更新教务系统密码</text>
 					<text class="arrow">›</text>
 				</view>
 				<view class="divider"></view>
@@ -170,7 +170,16 @@ onMounted(() => {
 });
 
 const handleMenuItem = (name: string) => {
-	uni.showToast({ title: name, icon: 'none' });
+	switch (name) {
+		case '修改门户密码':
+			uni.navigateTo({ url: '/pages/profile/update-jwxt-password' });
+			break;
+		case '修改知外助手密码':
+			uni.navigateTo({ url: '/pages/profile/change-password' });
+			break;
+		default:
+			uni.showToast({ title: name, icon: 'none' });
+	}
 };
 
 const handleLogout = () => {
