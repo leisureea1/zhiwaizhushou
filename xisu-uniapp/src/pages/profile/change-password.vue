@@ -2,89 +2,95 @@
 	<view class="page">
 		<!-- 头部 -->
 		<view class="header">
-			<view class="header-content" :style="{ paddingTop: statusBarHeight + 'px' }">
-				<view class="back-btn" @tap="handleBack">
-					<text class="iconfont icon-navigate_before"></text>
-				</view>
-				<text class="header-title">修改知外助手密码</text>
-				<view class="header-right"></view>
+			<view class="back-btn" @tap="handleBack">
+				<text class="iconfont icon-navigate_before"></text>
 			</view>
+			<text class="page-title">修改知外助手密码</text>
+			<view class="header-right"></view>
 		</view>
 
 		<!-- 内容区域 -->
-		<view class="content">
+		<scroll-view class="content" scroll-y>
 			<view class="info-box">
-				<view class="info-icon">
+				<view class="info-icon bg-teal">
 					<text class="iconfont icon-flight_class"></text>
 				</view>
-				<text class="info-text">修改知外助手的登录密码。修改成功后需要重新登录。</text>
+				<view class="info-body">
+					<text class="info-title">修改登录密码</text>
+					<text class="info-text">修改知外助手的登录密码。修改成功后需要重新登录。</text>
+				</view>
 			</view>
 
 			<view class="form-section">
 				<view class="input-wrapper">
 					<view class="input-label">当前密码</view>
-					<input 
-						class="input-field" 
-						type="text"
-						:password="!showOldPassword"
-						v-model="oldPassword"
-						placeholder="请输入当前密码" 
-						placeholder-class="placeholder"
-					/>
-					<view class="toggle-password" @tap="showOldPassword = !showOldPassword">
-						<text class="iconfont" :class="showOldPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+					<view class="input-box">
+						<input 
+							class="input-field" 
+							type="text"
+							:password="!showOldPassword"
+							v-model="oldPassword"
+							placeholder="请输入当前密码" 
+							placeholder-class="placeholder"
+						/>
+						<view class="toggle-password" @tap="showOldPassword = !showOldPassword">
+							<text class="iconfont" :class="showOldPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+						</view>
 					</view>
 				</view>
 
 				<view class="input-wrapper">
 					<view class="input-label">新密码</view>
-					<input 
-						class="input-field" 
-						type="text"
-						:password="!showNewPassword"
-						v-model="newPassword"
-						placeholder="请输入新密码（至少6位）" 
-						placeholder-class="placeholder"
-					/>
-					<view class="toggle-password" @tap="showNewPassword = !showNewPassword">
-						<text class="iconfont" :class="showNewPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+					<view class="input-box">
+						<input 
+							class="input-field" 
+							type="text"
+							:password="!showNewPassword"
+							v-model="newPassword"
+							placeholder="请输入新密码（至少6位）" 
+							placeholder-class="placeholder"
+						/>
+						<view class="toggle-password" @tap="showNewPassword = !showNewPassword">
+							<text class="iconfont" :class="showNewPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+						</view>
 					</view>
 				</view>
 
 				<view class="input-wrapper">
 					<view class="input-label">确认新密码</view>
-					<input 
-						class="input-field" 
-						type="text"
-						:password="!showConfirmPassword"
-						v-model="confirmPassword"
-						placeholder="请再次输入新密码" 
-						placeholder-class="placeholder"
-					/>
-					<view class="toggle-password" @tap="showConfirmPassword = !showConfirmPassword">
-						<text class="iconfont" :class="showConfirmPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+					<view class="input-box">
+						<input 
+							class="input-field" 
+							type="text"
+							:password="!showConfirmPassword"
+							v-model="confirmPassword"
+							placeholder="请再次输入新密码" 
+							placeholder-class="placeholder"
+						/>
+						<view class="toggle-password" @tap="showConfirmPassword = !showConfirmPassword">
+							<text class="iconfont" :class="showConfirmPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+						</view>
 					</view>
 				</view>
+			</view>
 
-				<view class="tip-text">
-					<text class="iconfont icon-info"></text>
-					<text>密码修改成功后，所有设备将自动退出登录</text>
-				</view>
+			<view class="tip-card">
+				<text class="iconfont icon-info"></text>
+				<text class="tip-content">密码修改成功后，所有设备将自动退出登录</text>
 			</view>
 
 			<button class="btn-primary" :disabled="isLoading" @tap="handleSubmit">
 				{{ isLoading ? '提交中...' : '确认修改' }}
 			</button>
-		</view>
+		</scroll-view>
 	</view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { safeNavigateBack } from '@/utils/navigation';
 import { authApi, clearTokens } from '@/services/apiService';
 
-const statusBarHeight = ref(0);
 const oldPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
@@ -92,11 +98,6 @@ const showOldPassword = ref(false);
 const showNewPassword = ref(false);
 const showConfirmPassword = ref(false);
 const isLoading = ref(false);
-
-onMounted(() => {
-	const systemInfo = uni.getSystemInfoSync();
-	statusBarHeight.value = systemInfo.statusBarHeight || 0;
-});
 
 const handleBack = () => {
 	safeNavigateBack();
@@ -152,163 +153,199 @@ const handleSubmit = async () => {
 
 <style lang="scss" scoped>
 .page {
+	display: flex;
+	flex-direction: column;
 	min-height: 100vh;
 	background-color: $bg-light;
 }
 
 .header {
-	background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
-}
-
-.header-content {
+	position: sticky;
+	top: 0;
+	z-index: 10;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 12px 16px;
-	padding-bottom: 20px;
+	padding: 24rpx 32rpx;
+	padding-top: calc(var(--status-bar-height) + 48rpx);
+	background: rgba(248, 250, 252, 0.9);
+	backdrop-filter: blur(20rpx);
 }
 
 .back-btn {
-	width: 40px;
-	height: 40px;
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	background-color: #fff;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 
 	.iconfont {
-		font-size: 28px;
-		color: #fff;
+		font-size: 40rpx;
+		color: $text-primary;
 	}
 }
 
-.header-title {
-	font-size: 18px;
-	font-weight: 600;
-	color: #fff;
+.page-title {
+	flex: 1;
+	text-align: center;
+	font-size: 36rpx;
+	font-weight: 700;
+	color: $text-primary;
 }
 
 .header-right {
-	width: 40px;
+	width: 72rpx;
 }
 
 .content {
-	padding: 20px;
+	flex: 1;
+	padding: 0 32rpx;
+	padding-top: 24rpx;
 }
 
 .info-box {
 	display: flex;
-	align-items: flex-start;
-	gap: 12px;
-	background: #fff;
-	border-radius: 12px;
-	padding: 16px;
-	margin-bottom: 20px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	align-items: center;
+	gap: 24rpx;
+	background-color: #fff;
+	border-radius: 48rpx;
+	padding: 40rpx 48rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+	border: 2rpx solid rgba(0, 0, 0, 0.04);
 }
 
 .info-icon {
-	width: 44px;
-	height: 44px;
-	border-radius: 12px;
-	background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 24rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
 
 	.iconfont {
-		font-size: 24px;
-		color: #fff;
+		font-size: 36rpx;
+		color: #14b8a6;
+	}
+
+	&.bg-teal {
+		background-color: rgba(20, 184, 166, 0.1);
 	}
 }
 
-.info-text {
+.info-body {
 	flex: 1;
-	font-size: 14px;
-	color: #666;
+}
+
+.info-title {
+	display: block;
+	font-size: 32rpx;
+	font-weight: 600;
+	color: $text-primary;
+	margin-bottom: 8rpx;
+}
+
+.info-text {
+	font-size: 26rpx;
+	color: $text-secondary;
 	line-height: 1.6;
 }
 
 .form-section {
-	background: #fff;
-	border-radius: 12px;
-	padding: 16px;
-	margin-bottom: 24px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	background-color: #fff;
+	border-radius: 48rpx;
+	padding: 40rpx 48rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+	border: 2rpx solid rgba(0, 0, 0, 0.04);
 }
 
 .input-wrapper {
-	position: relative;
-	margin-bottom: 16px;
+	margin-bottom: 32rpx;
 
-	&:last-of-type {
+	&:last-child {
 		margin-bottom: 0;
 	}
 }
 
 .input-label {
-	font-size: 14px;
-	color: #333;
+	font-size: 28rpx;
+	color: $text-primary;
 	font-weight: 500;
-	margin-bottom: 8px;
+	margin-bottom: 16rpx;
+}
+
+.input-box {
+	position: relative;
+	display: flex;
+	align-items: center;
 }
 
 .input-field {
-	width: 100%;
-	height: 48px;
-	background: #f5f5f5;
-	border-radius: 8px;
-	padding: 0 16px;
-	font-size: 15px;
+	flex: 1;
+	height: 96rpx;
+	background: $bg-light;
+	border-radius: 24rpx;
+	padding: 0 96rpx 0 32rpx;
+	font-size: 30rpx;
+	color: $text-primary;
 	box-sizing: border-box;
 }
 
 .placeholder {
-	color: #999;
+	color: $text-light;
 }
 
 .toggle-password {
 	position: absolute;
-	right: 12px;
-	bottom: 12px;
+	right: 24rpx;
+	top: 50%;
+	transform: translateY(-50%);
 
 	.iconfont {
-		font-size: 20px;
-		color: #999;
+		font-size: 36rpx;
+		color: $text-light;
 	}
 }
 
-.tip-text {
+.tip-card {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	margin-top: 12px;
-	padding-top: 12px;
-	border-top: 1px dashed #eee;
+	gap: 12rpx;
+	background-color: rgba(20, 184, 166, 0.06);
+	border-radius: 32rpx;
+	padding: 24rpx 32rpx;
+	margin-bottom: 48rpx;
 	
 	.iconfont {
-		font-size: 14px;
-		color: #999;
+		font-size: 28rpx;
+		color: #14b8a6;
 	}
 	
-	text {
-		font-size: 12px;
-		color: #999;
+	.tip-content {
+		font-size: 24rpx;
+		color: $text-secondary;
+		line-height: 1.5;
 	}
 }
 
 .btn-primary {
 	width: 100%;
-	height: 48px;
-	background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
-	border-radius: 24px;
+	height: 96rpx;
+	line-height: 96rpx;
+	background-color: #14b8a6;
+	border-radius: 48rpx;
 	border: none;
 	color: #fff;
-	font-size: 16px;
+	font-size: 32rpx;
 	font-weight: 600;
+	box-shadow: 0 8rpx 24rpx rgba(20, 184, 166, 0.25);
 
 	&[disabled] {
-		opacity: 0.6;
+		opacity: 0.5;
 	}
 }
 </style>

@@ -38,7 +38,7 @@
 					<view class="menu-icon bg-orange">
 						<text class="iconfont icon-arrow_forward"></text>
 					</view>
-					<text class="menu-label">更新教务系统密码</text>
+					<text class="menu-label">更新掌上西外密码</text>
 					<text class="arrow">›</text>
 				</view>
 				<view class="divider"></view>

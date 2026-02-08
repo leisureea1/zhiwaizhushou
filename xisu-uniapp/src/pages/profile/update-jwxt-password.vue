@@ -2,62 +2,67 @@
 	<view class="page">
 		<!-- 头部 -->
 		<view class="header">
-			<view class="header-content" :style="{ paddingTop: statusBarHeight + 'px' }">
-				<view class="back-btn" @tap="handleBack">
-					<text class="iconfont icon-navigate_before"></text>
-				</view>
-				<text class="header-title">更新教务系统密码</text>
-				<view class="header-right"></view>
+			<view class="back-btn" @tap="handleBack">
+				<text class="iconfont icon-navigate_before"></text>
 			</view>
+			<text class="page-title">更新掌上西外密码</text>
+			<view class="header-right"></view>
 		</view>
 
 		<!-- 内容区域 -->
-		<view class="content">
+		<scroll-view class="content" scroll-y>
 			<view class="info-box">
-				<view class="info-icon">
+				<view class="info-icon bg-orange">
 					<text class="iconfont icon-arrow_forward"></text>
 				</view>
-				<text class="info-text">如果您的教务系统密码已更改，请在此处提交最新密码，以便继续使用成绩查询、考试安排等功能。</text>
+				<view class="info-body">
+					<text class="info-title">同步掌上西外密码</text>
+					<text class="info-text">如果您的掌上西外密码已更改，请在此处提交最新密码，以便继续使用成绩查询、考试安排等功能。</text>
+				</view>
 			</view>
 
 			<view class="form-section">
 				<view class="input-wrapper">
 					<view class="input-label">学号</view>
-					<input 
-						class="input-field" 
-						type="text" 
-						v-model="username"
-						placeholder="请输入学号" 
-						placeholder-class="placeholder"
-						disabled
-					/>
-				</view>
-
-				<view class="input-wrapper">
-					<view class="input-label">新教务系统密码</view>
-					<input 
-						class="input-field" 
-						type="text"
-						:password="!showPassword"
-						v-model="password"
-						placeholder="请输入最新的教务系统密码" 
-						placeholder-class="placeholder"
-					/>
-					<view class="toggle-password" @tap="showPassword = !showPassword">
-						<text class="iconfont" :class="showPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+					<view class="input-box">
+						<input 
+							class="input-field input-disabled" 
+							type="text" 
+							v-model="username"
+							placeholder="请输入学号" 
+							placeholder-class="placeholder"
+							disabled
+						/>
 					</view>
 				</view>
 
-				<view class="tip-text">
-					<text class="iconfont icon-info"></text>
-					<text>请输入教务系统（jwxt.xisu.edu.cn）的最新登录密码</text>
+				<view class="input-wrapper">
+					<view class="input-label">新掌上西外密码</view>
+					<view class="input-box">
+						<input 
+							class="input-field" 
+							type="text"
+							:password="!showPassword"
+							v-model="password"
+							placeholder="请输入最新的掌上西外密码" 
+							placeholder-class="placeholder"
+						/>
+						<view class="toggle-password" @tap="showPassword = !showPassword">
+							<text class="iconfont" :class="showPassword ? 'icon-visibility' : 'icon-visibility_off'"></text>
+						</view>
+					</view>
 				</view>
+			</view>
+
+			<view class="tip-card">
+				<text class="iconfont icon-info"></text>
+				<text class="tip-content">请输入掌上西外的最新登录密码</text>
 			</view>
 
 			<button class="btn-primary" :disabled="isLoading" @tap="handleSubmit">
 				{{ isLoading ? '提交中...' : '更新密码' }}
 			</button>
-		</view>
+		</scroll-view>
 	</view>
 </template>
 
@@ -66,16 +71,12 @@ import { ref, onMounted } from 'vue';
 import { safeNavigateBack } from '@/utils/navigation';
 import { jwxtApi, getUserInfo } from '@/services/apiService';
 
-const statusBarHeight = ref(0);
 const username = ref('');
 const password = ref('');
 const showPassword = ref(false);
 const isLoading = ref(false);
 
 onMounted(() => {
-	const systemInfo = uni.getSystemInfoSync();
-	statusBarHeight.value = systemInfo.statusBarHeight || 0;
-	
 	// 预填充学号
 	const userInfo = getUserInfo<{ studentId?: string }>();
 	if (userInfo?.studentId) {
@@ -103,7 +104,7 @@ const handleSubmit = async () => {
 	try {
 		await jwxtApi.bindAccount(username.value, password.value);
 		uni.hideLoading();
-		uni.showToast({ title: '教务密码更新成功', icon: 'success' });
+		uni.showToast({ title: '掌上西外密码更新成功', icon: 'success' });
 		setTimeout(() => {
 			safeNavigateBack();
 		}, 1500);
@@ -119,163 +120,204 @@ const handleSubmit = async () => {
 
 <style lang="scss" scoped>
 .page {
+	display: flex;
+	flex-direction: column;
 	min-height: 100vh;
 	background-color: $bg-light;
 }
 
 .header {
-	background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-}
-
-.header-content {
+	position: sticky;
+	top: 0;
+	z-index: 10;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 12px 16px;
-	padding-bottom: 20px;
+	padding: 24rpx 32rpx;
+	padding-top: calc(var(--status-bar-height) + 48rpx);
+	background: rgba(248, 250, 252, 0.9);
+	backdrop-filter: blur(20rpx);
 }
 
 .back-btn {
-	width: 40px;
-	height: 40px;
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 50%;
+	background-color: #fff;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 
 	.iconfont {
-		font-size: 28px;
-		color: #fff;
+		font-size: 40rpx;
+		color: $text-primary;
 	}
 }
 
-.header-title {
-	font-size: 18px;
-	font-weight: 600;
-	color: #fff;
+.page-title {
+	flex: 1;
+	text-align: center;
+	font-size: 36rpx;
+	font-weight: 700;
+	color: $text-primary;
 }
 
 .header-right {
-	width: 40px;
+	width: 72rpx;
 }
 
 .content {
-	padding: 20px;
+	flex: 1;
+	padding: 0 32rpx;
+	padding-top: 24rpx;
 }
 
 .info-box {
 	display: flex;
-	align-items: flex-start;
-	gap: 12px;
-	background: #fff;
-	border-radius: 12px;
-	padding: 16px;
-	margin-bottom: 20px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	align-items: center;
+	gap: 24rpx;
+	background-color: #fff;
+	border-radius: 48rpx;
+	padding: 40rpx 48rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+	border: 2rpx solid rgba(0, 0, 0, 0.04);
 }
 
 .info-icon {
-	width: 44px;
-	height: 44px;
-	border-radius: 12px;
-	background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 24rpx;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
 
 	.iconfont {
-		font-size: 24px;
-		color: #fff;
+		font-size: 36rpx;
+		color: #f97316;
+	}
+
+	&.bg-orange {
+		background-color: rgba(249, 115, 22, 0.1);
 	}
 }
 
-.info-text {
+.info-body {
 	flex: 1;
-	font-size: 14px;
-	color: #666;
+}
+
+.info-title {
+	display: block;
+	font-size: 32rpx;
+	font-weight: 600;
+	color: $text-primary;
+	margin-bottom: 8rpx;
+}
+
+.info-text {
+	font-size: 26rpx;
+	color: $text-secondary;
 	line-height: 1.6;
 }
 
 .form-section {
-	background: #fff;
-	border-radius: 12px;
-	padding: 16px;
-	margin-bottom: 24px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	background-color: #fff;
+	border-radius: 48rpx;
+	padding: 40rpx 48rpx;
+	margin-bottom: 24rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+	border: 2rpx solid rgba(0, 0, 0, 0.04);
 }
 
 .input-wrapper {
-	position: relative;
-	margin-bottom: 16px;
+	margin-bottom: 32rpx;
 
-	&:last-of-type {
+	&:last-child {
 		margin-bottom: 0;
 	}
 }
 
 .input-label {
-	font-size: 14px;
-	color: #333;
+	font-size: 28rpx;
+	color: $text-primary;
 	font-weight: 500;
-	margin-bottom: 8px;
+	margin-bottom: 16rpx;
+}
+
+.input-box {
+	position: relative;
+	display: flex;
+	align-items: center;
 }
 
 .input-field {
-	width: 100%;
-	height: 48px;
-	background: #f5f5f5;
-	border-radius: 8px;
-	padding: 0 16px;
-	font-size: 15px;
+	flex: 1;
+	height: 96rpx;
+	background: $bg-light;
+	border-radius: 24rpx;
+	padding: 0 96rpx 0 32rpx;
+	font-size: 30rpx;
+	color: $text-primary;
 	box-sizing: border-box;
 }
 
+.input-disabled {
+	opacity: 0.6;
+	padding-right: 32rpx;
+}
+
 .placeholder {
-	color: #999;
+	color: $text-light;
 }
 
 .toggle-password {
 	position: absolute;
-	right: 12px;
-	bottom: 12px;
+	right: 24rpx;
+	top: 50%;
+	transform: translateY(-50%);
 
 	.iconfont {
-		font-size: 20px;
-		color: #999;
+		font-size: 36rpx;
+		color: $text-light;
 	}
 }
 
-.tip-text {
+.tip-card {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	margin-top: 12px;
-	padding-top: 12px;
-	border-top: 1px dashed #eee;
+	gap: 12rpx;
+	background-color: rgba(249, 115, 22, 0.06);
+	border-radius: 32rpx;
+	padding: 24rpx 32rpx;
+	margin-bottom: 48rpx;
 	
 	.iconfont {
-		font-size: 14px;
-		color: #999;
+		font-size: 28rpx;
+		color: #f97316;
 	}
 	
-	text {
-		font-size: 12px;
-		color: #999;
+	.tip-content {
+		font-size: 24rpx;
+		color: $text-secondary;
+		line-height: 1.5;
 	}
 }
 
 .btn-primary {
 	width: 100%;
-	height: 48px;
-	background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-	border-radius: 24px;
+	height: 96rpx;
+	line-height: 96rpx;
+	background-color: #f97316;
+	border-radius: 48rpx;
 	border: none;
 	color: #fff;
-	font-size: 16px;
+	font-size: 32rpx;
 	font-weight: 600;
+	box-shadow: 0 8rpx 24rpx rgba(249, 115, 22, 0.25);
 
 	&[disabled] {
-		opacity: 0.6;
+		opacity: 0.5;
 	}
 }
 </style>
