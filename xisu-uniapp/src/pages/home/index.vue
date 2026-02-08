@@ -456,8 +456,8 @@ const weekHintText = computed(() => {
 	}
 });
 
-// 颜色类数组，用于给不同课程分配不同颜色
-const colorClasses = ['color-sky', 'color-pink', 'color-amber', 'color-indigo', 'color-yellow', 'color-emerald', 'color-purple', 'color-teal'];
+// 颜色类数组，相邻颜色视觉差距大，避免相邻课程难以区分
+const colorClasses = ['color-sky', 'color-pink', 'color-emerald', 'color-indigo', 'color-amber', 'color-teal', 'color-yellow', 'color-purple'];
 const courseColorMap = new Map<string, string>();
 
 const getWeekDays = () => {
@@ -988,33 +988,43 @@ onMounted(async () => {
 	overflow: hidden;
 	
 	&.color-sky {
-		background-color: rgba(14, 165, 233, 0.1);
+		background-color: rgba(14, 165, 233, 0.25);
 		border-left-color: #0ea5e9;
 	}
 	
 	&.color-pink {
-		background-color: rgba(236, 72, 153, 0.1);
+		background-color: rgba(236, 72, 153, 0.25);
 		border-left-color: #ec4899;
 	}
 	
 	&.color-amber {
-		background-color: rgba(245, 158, 11, 0.1);
+		background-color: rgba(245, 158, 11, 0.25);
 		border-left-color: #f59e0b;
 	}
 	
 	&.color-indigo {
-		background-color: rgba(99, 102, 241, 0.1);
+		background-color: rgba(99, 102, 241, 0.25);
 		border-left-color: #6366f1;
 	}
 	
 	&.color-yellow {
-		background-color: rgba(234, 179, 8, 0.1);
+		background-color: rgba(234, 179, 8, 0.25);
 		border-left-color: #eab308;
 	}
 	
 	&.color-emerald {
-		background-color: rgba(16, 185, 129, 0.1);
+		background-color: rgba(16, 185, 129, 0.25);
 		border-left-color: #10b981;
+	}
+	
+	&.color-purple {
+		background-color: rgba(139, 92, 246, 0.25);
+		border-left-color: #8b5cf6;
+	}
+	
+	&.color-teal {
+		background-color: rgba(20, 184, 166, 0.25);
+		border-left-color: #14b8a6;
 	}
 }
 
