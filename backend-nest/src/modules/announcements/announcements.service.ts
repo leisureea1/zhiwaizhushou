@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateAnnouncementDto, UpdateAnnouncementDto, AnnouncementQueryDto } from './dto';
-import { PaginationDto, PaginatedResponse } from '@/common/dto/pagination.dto';
-import { AnnouncementStatus, UserRole } from '@prisma/client';
+import { PaginatedResponse } from '@/common/dto/pagination.dto';
+import { AnnouncementStatus, UserRole, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AnnouncementsService {
@@ -13,6 +13,7 @@ export class AnnouncementsService {
       data: {
         ...dto,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+        publishedAt: dto.status === AnnouncementStatus.PUBLISHED ? new Date() : undefined,
         authorId,
       },
       include: {
@@ -30,15 +31,10 @@ export class AnnouncementsService {
     return announcement;
   }
 
-  async findAll(
-    query: AnnouncementQueryDto,
-    pagination: PaginationDto,
-    includeUnpublished = false,
-  ) {
-    const { keyword, type, status } = query;
-    const { page = 1, pageSize = 20 } = pagination;
+  async findAll(query: AnnouncementQueryDto, includeUnpublished = false) {
+    const { keyword, type, status, page = 1, pageSize = 20 } = query;
 
-    const where: any = {};
+    const where: Prisma.AnnouncementWhereInput = {};
 
     if (keyword) {
       where.OR = [

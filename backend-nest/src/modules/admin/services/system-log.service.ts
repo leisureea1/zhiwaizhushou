@@ -40,9 +40,8 @@ export class SystemLogService {
     });
   }
 
-  async findAll(query: any, pagination: any) {
-    const { level, action, module, userId, startDate, endDate } = query;
-    const { page = 1, pageSize = 20 } = pagination;
+  async findAll(query: any) {
+    const { level, action, module, userId, startDate, endDate, page = 1, pageSize = 20 } = query;
 
     const where: any = {};
 

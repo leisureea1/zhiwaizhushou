@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsEnum, IsString, IsDateString } from 'class-validator';
 import { LogLevel, ActionType } from '@prisma/client';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
-export class SystemLogQueryDto {
+export class SystemLogQueryDto extends PaginationDto {
   @ApiPropertyOptional({ description: '日志级别', enum: LogLevel })
   @IsOptional()
   @IsEnum(LogLevel)
@@ -39,4 +40,10 @@ export class DashboardStatsDto {
   activeUsers: number;
   totalAnnouncements: number;
   todayLogs: number;
+}
+
+export class UpdateConfigDto {
+  @ApiPropertyOptional({ description: '配置项键值对' })
+  @IsOptional()
+  configs: Record<string, string>;
 }

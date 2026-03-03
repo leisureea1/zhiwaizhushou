@@ -2,7 +2,6 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } fro
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto, UpdateAnnouncementDto, AnnouncementQueryDto } from './dto';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Public } from '@/common/decorators/public.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
@@ -21,13 +20,10 @@ export class AnnouncementsController {
   @Public()
   @ApiOperation({ summary: '获取公告列表' })
   @ApiResponse({ status: 200, description: '成功' })
-  async findAll(
-    @Query() query: AnnouncementQueryDto,
-    @Query() pagination: PaginationDto,
-    @CurrentUser() user?: any,
-  ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async findAll(@Query() query: AnnouncementQueryDto, @CurrentUser() user?: any) {
     const includeUnpublished = user?.role && user.role !== UserRole.USER;
-    return this.announcementsService.findAll(query, pagination, includeUnpublished);
+    return this.announcementsService.findAll(query, includeUnpublished);
   }
 
   @Get('unviewed-count')

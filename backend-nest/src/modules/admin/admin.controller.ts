@@ -2,8 +2,7 @@ import { Controller, Get, Post, Body, Query, Param, UseGuards } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './services/admin.service';
 import { SystemLogService } from './services/system-log.service';
-import { SystemLogQueryDto } from './dto';
-import { PaginationDto } from '@/common/dto/pagination.dto';
+import { SystemLogQueryDto, UpdateConfigDto } from './dto';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
@@ -37,8 +36,8 @@ export class AdminController {
   @Get('system-logs')
   @ApiOperation({ summary: '查询系统日志' })
   @ApiResponse({ status: 200, description: '成功' })
-  async getSystemLogs(@Query() query: SystemLogQueryDto, @Query() pagination: PaginationDto) {
-    return this.systemLogService.findAll(query, pagination);
+  async getSystemLogs(@Query() query: SystemLogQueryDto) {
+    return this.systemLogService.findAll(query);
   }
 
   @Get('system-logs/action-types')
@@ -63,5 +62,21 @@ export class AdminController {
   @ApiOperation({ summary: '更新功能开关' })
   async updateFeatureFlag(@Param('name') name: string, @Body('isEnabled') isEnabled: boolean) {
     return this.adminService.updateFeatureFlag(name, isEnabled);
+  }
+
+  @Get('config')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: '获取系统配置（仅超级管理员）' })
+  @ApiResponse({ status: 200, description: '成功' })
+  async getConfig() {
+    return this.adminService.getConfig();
+  }
+
+  @Post('config')
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: '更新系统配置（仅超级管理员）' })
+  @ApiResponse({ status: 200, description: '成功' })
+  async updateConfig(@Body() dto: UpdateConfigDto) {
+    return this.adminService.updateConfig(dto.configs);
   }
 }

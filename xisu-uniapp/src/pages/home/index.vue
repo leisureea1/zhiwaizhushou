@@ -94,13 +94,45 @@
 		
 		<!-- 自定义 TabBar -->
 		<TabBar :current="0" />
+
+		<!-- 公告弹窗 -->
+		<view v-if="showAnnouncementPopup && currentPopupAnnouncement" class="announcement-overlay" @tap="closeAnnouncementPopup">
+			<view class="announcement-popup" @tap.stop>
+				<!-- 关闭按钮 -->
+				<view class="popup-close" @tap="closeAnnouncementPopup">
+					<text class="close-icon">✕</text>
+				</view>
+				<!-- 类型标签 -->
+				<view class="popup-type-badge" :class="'type-' + currentPopupAnnouncement.type">
+					<text class="badge-text">{{ getAnnouncementTypeLabel(currentPopupAnnouncement.type) }}</text>
+				</view>
+				<!-- 标题 -->
+				<text class="popup-title">{{ currentPopupAnnouncement.title }}</text>
+				<!-- 时间 -->
+				<text class="popup-time">{{ formatDate(currentPopupAnnouncement.publishedAt || currentPopupAnnouncement.createdAt) }}</text>
+				<!-- 内容 -->
+				<scroll-view scroll-y class="popup-content">
+					<text class="popup-content-text">{{ currentPopupAnnouncement.summary || currentPopupAnnouncement.content }}</text>
+				</scroll-view>
+				<!-- 底部按钮 -->
+				<view class="popup-footer">
+					<view v-if="popupAnnouncements.length > 1" class="popup-counter">
+						<text class="counter-text">{{ popupIndex + 1 }} / {{ popupAnnouncements.length }}</text>
+					</view>
+					<view class="popup-btn" @tap="handlePopupAction">
+						<text class="btn-text">{{ popupIndex < popupAnnouncements.length - 1 ? '下一条' : '我知道了' }}</text>
+					</view>
+				</view>
+			</view>
+		</view>
 	</view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import TabBar from '@/components/TabBar/index.vue';
-import { jwxtApi, getAccessToken } from '@/services/apiService';
+import { jwxtApi, announcementApi, getAccessToken } from '@/services/apiService';
+import type { AnnouncementItem } from '@/services/apiService';
 
 // 学期周数配置
 const TOTAL_WEEKS = 18; // 学期总周数
@@ -723,6 +755,111 @@ const handleRefresh = async () => {
 	}
 };
 
+// ============ 公告弹窗 ============
+const POPUP_VIEWED_KEY = 'announcement_popup_viewed';
+const showAnnouncementPopup = ref(false);
+const popupAnnouncements = ref<AnnouncementItem[]>([]);
+const popupIndex = ref(0);
+const currentPopupAnnouncement = computed(() => popupAnnouncements.value[popupIndex.value] || null);
+
+// 获取已查看的弹窗公告 ID 集合
+const getViewedPopupIds = (): Set<string> => {
+	try {
+		const stored = uni.getStorageSync(POPUP_VIEWED_KEY);
+		if (stored) {
+			const data = JSON.parse(stored);
+			return new Set(data);
+		}
+	} catch {}
+	return new Set();
+};
+
+// 保存已查看的弹窗公告 ID
+const saveViewedPopupId = (id: string) => {
+	try {
+		const viewedIds = getViewedPopupIds();
+		viewedIds.add(id);
+		// 只保留最近 100 条记录
+		const arr = Array.from(viewedIds).slice(-100);
+		uni.setStorageSync(POPUP_VIEWED_KEY, JSON.stringify(arr));
+	} catch {}
+};
+
+// 获取公告类型标签
+const getAnnouncementTypeLabel = (type: string): string => {
+	const map: Record<string, string> = {
+		NORMAL: '公告',
+		IMPORTANT: '重要',
+		URGENT: '紧急',
+		MAINTENANCE: '维护',
+	};
+	return map[type] || '公告';
+};
+
+// 格式化日期
+const formatDate = (dateStr: string): string => {
+	if (!dateStr) return '';
+	const date = new Date(dateStr);
+	const y = date.getFullYear();
+	const m = String(date.getMonth() + 1).padStart(2, '0');
+	const d = String(date.getDate()).padStart(2, '0');
+	return `${y}-${m}-${d}`;
+};
+
+// 加载弹窗公告
+const loadPopupAnnouncements = async () => {
+	const token = getAccessToken();
+	if (!token) return;
+
+	try {
+		const res = await announcementApi.getList({ page: 1, pageSize: 10 });
+		if (res && res.items) {
+			// 筛选弹窗公告（isPopup = true）
+			const popupItems = res.items.filter((item: AnnouncementItem) => item.isPopup);
+			if (popupItems.length === 0) return;
+
+			// 排除已在本地查看过的
+			const viewedIds = getViewedPopupIds();
+			const unviewed = popupItems.filter((item: AnnouncementItem) => !viewedIds.has(item.id));
+			if (unviewed.length === 0) return;
+
+			popupAnnouncements.value = unviewed;
+			popupIndex.value = 0;
+			showAnnouncementPopup.value = true;
+		}
+	} catch (err) {
+		console.log('[Home] Failed to load popup announcements:', err);
+	}
+};
+
+// 关闭弹窗
+const closeAnnouncementPopup = () => {
+	// 标记当前公告已读
+	const current = currentPopupAnnouncement.value;
+	if (current) {
+		saveViewedPopupId(current.id);
+		announcementApi.markViewed(current.id).catch(() => {});
+	}
+	showAnnouncementPopup.value = false;
+};
+
+// 弹窗按钮操作
+const handlePopupAction = () => {
+	const current = currentPopupAnnouncement.value;
+	if (current) {
+		saveViewedPopupId(current.id);
+		announcementApi.markViewed(current.id).catch(() => {});
+	}
+
+	if (popupIndex.value < popupAnnouncements.value.length - 1) {
+		// 下一条
+		popupIndex.value++;
+	} else {
+		// 最后一条，关闭
+		showAnnouncementPopup.value = false;
+	}
+};
+
 onMounted(async () => {
 	try {
 		const menuButton = uni.getMenuButtonBoundingClientRect?.();
@@ -752,6 +889,9 @@ onMounted(async () => {
 	// 先加载学期列表，再加载课程表
 	await loadSemesters();
 	loadCourses();
+
+	// 加载弹窗公告
+	loadPopupAnnouncements();
 });
 </script>
 
@@ -1042,5 +1182,144 @@ onMounted(async () => {
 	font-size: 16rpx;
 	color: $text-secondary;
 	line-height: 1.3;
+}
+
+// ============ 公告弹窗样式 ============
+.announcement-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.55);
+	z-index: 999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 60rpx 48rpx;
+}
+
+.announcement-popup {
+	position: relative;
+	width: 100%;
+	max-height: 70vh;
+	background: #fff;
+	border-radius: 32rpx;
+	padding: 56rpx 40rpx 40rpx;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.18);
+	animation: popupSlideUp 0.3s ease-out;
+}
+
+@keyframes popupSlideUp {
+	from {
+		opacity: 0;
+		transform: translateY(60rpx);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.popup-close {
+	position: absolute;
+	top: 20rpx;
+	right: 24rpx;
+	width: 56rpx;
+	height: 56rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: #f1f5f9;
+
+	.close-icon {
+		font-size: 28rpx;
+		color: #94a3b8;
+		font-weight: 600;
+	}
+}
+
+.popup-type-badge {
+	align-self: flex-start;
+	padding: 6rpx 20rpx;
+	border-radius: 20rpx;
+	margin-bottom: 20rpx;
+
+	.badge-text {
+		font-size: 22rpx;
+		font-weight: 600;
+	}
+
+	&.type-NORMAL {
+		background-color: rgba(59, 130, 246, 0.12);
+		.badge-text { color: #3b82f6; }
+	}
+	&.type-IMPORTANT {
+		background-color: rgba(245, 158, 11, 0.12);
+		.badge-text { color: #f59e0b; }
+	}
+	&.type-URGENT {
+		background-color: rgba(239, 68, 68, 0.12);
+		.badge-text { color: #ef4444; }
+	}
+	&.type-MAINTENANCE {
+		background-color: rgba(107, 114, 128, 0.12);
+		.badge-text { color: #6b7280; }
+	}
+}
+
+.popup-title {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #1e293b;
+	line-height: 1.4;
+	margin-bottom: 12rpx;
+}
+
+.popup-time {
+	font-size: 24rpx;
+	color: #94a3b8;
+	margin-bottom: 24rpx;
+}
+
+.popup-content {
+	flex: 1;
+	max-height: 360rpx;
+	margin-bottom: 32rpx;
+}
+
+.popup-content-text {
+	font-size: 28rpx;
+	color: #475569;
+	line-height: 1.7;
+}
+
+.popup-footer {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 16rpx;
+}
+
+.popup-counter {
+	.counter-text {
+		font-size: 24rpx;
+		color: #94a3b8;
+	}
+}
+
+.popup-btn {
+	background: linear-gradient(135deg, #3b82f6, #2563eb);
+	padding: 18rpx 48rpx;
+	border-radius: 24rpx;
+	
+	.btn-text {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #fff;
+	}
 }
 </style>

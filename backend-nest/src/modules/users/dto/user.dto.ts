@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, IsEnum, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsEnum, Matches } from 'class-validator';
 import { UserRole, UserStatus } from '@prisma/client';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export class UpdateUserDto {
   @ApiPropertyOptional({ description: '昵称' })
@@ -43,7 +44,7 @@ export class AdminUpdateUserDto extends UpdateUserDto {
   status?: UserStatus;
 }
 
-export class UserQueryDto {
+export class UserQueryDto extends PaginationDto {
   @ApiPropertyOptional({ description: '搜索关键字（用户名/邮箱/手机号）' })
   @IsOptional()
   @IsString()

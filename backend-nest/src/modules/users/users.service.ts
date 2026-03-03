@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { UpdateUserDto, AdminUpdateUserDto, UserQueryDto } from './dto';
-import { PaginationDto, PaginatedResponse } from '@/common/dto/pagination.dto';
+import { PaginatedResponse } from '@/common/dto/pagination.dto';
 import { UserRole, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -42,9 +42,8 @@ export class UsersService {
     return user;
   }
 
-  async findAll(query: UserQueryDto, pagination: PaginationDto) {
-    const { keyword, role, status } = query;
-    const { page = 1, pageSize = 20 } = pagination;
+  async findAll(query: UserQueryDto) {
+    const { keyword, role, status, page = 1, pageSize = 20 } = query;
 
     const where: Prisma.UserWhereInput = {};
 
@@ -80,6 +79,9 @@ export class UsersService {
           avatar: true,
           role: true,
           status: true,
+          college: true,
+          major: true,
+          className: true,
           createdAt: true,
           lastLoginAt: true,
         },

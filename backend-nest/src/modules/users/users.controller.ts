@@ -2,7 +2,6 @@ import { Controller, Get, Put, Post, Delete, Body, Param, Query, UseGuards } fro
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateUserDto, AdminUpdateUserDto, UserQueryDto, UpdateAvatarDto } from './dto';
-import { PaginationDto } from '@/common/dto/pagination.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
@@ -27,8 +26,8 @@ export class UsersController {
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: '获取用户列表（管理员）' })
   @ApiResponse({ status: 200, description: '成功' })
-  async findAll(@Query() query: UserQueryDto, @Query() pagination: PaginationDto) {
-    return this.usersService.findAll(query, pagination);
+  async findAll(@Query() query: UserQueryDto) {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')

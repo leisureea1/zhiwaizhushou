@@ -613,3 +613,53 @@ export const jwxtApi = {
   /** 解绑教务系统账号 */
   unbindAccount: () => post<{ message: string }>('/jwxt/unbind'),
 };
+
+// ============================================
+// 公告 API
+// ============================================
+
+export interface AnnouncementItem {
+  id: string;
+  title: string;
+  content: string;
+  summary?: string;
+  type: string;
+  status: string;
+  isPinned: boolean;
+  isPopup: boolean;
+  publishedAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+  author?: {
+    id: string;
+    username: string;
+    realName?: string;
+    avatar?: string;
+  };
+  _count?: {
+    views: number;
+  };
+}
+
+export interface AnnouncementListData {
+  items: AnnouncementItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export const announcementApi = {
+  /** 获取公告列表（公开接口） */
+  getList: (params?: { page?: number; pageSize?: number; type?: string }) =>
+    get<AnnouncementListData>('/announcements', params),
+
+  /** 获取公告详情 */
+  getById: (id: string) => get<AnnouncementItem>(`/announcements/${id}`),
+
+  /** 获取未读公告数量 */
+  getUnviewedCount: () => get<{ count: number }>('/announcements/unviewed-count'),
+
+  /** 标记公告为已读 */
+  markViewed: (id: string) => post(`/announcements/${id}/mark-viewed`),
+};

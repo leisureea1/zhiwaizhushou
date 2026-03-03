@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsNotEmpty } from 'class-validator';
 import { AnnouncementType, AnnouncementStatus } from '@prisma/client';
+import { PaginationDto } from '@/common/dto/pagination.dto';
 
 export class CreateAnnouncementDto {
   @ApiProperty({ description: '公告标题' })
@@ -37,16 +38,16 @@ export class CreateAnnouncementDto {
   @IsOptional()
   @IsDateString()
   expiresAt?: string;
-}
 
-export class UpdateAnnouncementDto extends CreateAnnouncementDto {
   @ApiPropertyOptional({ description: '公告状态', enum: AnnouncementStatus })
   @IsOptional()
   @IsEnum(AnnouncementStatus)
   status?: AnnouncementStatus;
 }
 
-export class AnnouncementQueryDto {
+export class UpdateAnnouncementDto extends CreateAnnouncementDto {}
+
+export class AnnouncementQueryDto extends PaginationDto {
   @ApiPropertyOptional({ description: '搜索关键字' })
   @IsOptional()
   @IsString()
